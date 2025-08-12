@@ -36,9 +36,6 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
 ADD config.yaml /etc/flightctl/
 
 
-
-
-
 ################################################################################
 # Customization
 ################################################################################
@@ -50,56 +47,14 @@ RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
     firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
     firewall-offline-cmd  --zone=public --add-port=80/tcp
 
-RUN mkdir -p /var/home/kiosk/.local/bin/ && \
-cat > /var/home/kiosk/.local/bin/gnome-kiosk-script  <<EOF
-#!/bin/sh
-set -Eeuo pipefail
-export MOZ_ENABLE_WAYLAND=1
-while ! curl -sf --connect-timeout 5 --expect100-timeout 5 https://demo.home-assistant.io/#/energy; do
-    echo "Waiting for the Kiosk APP to become available..."
-    sleep 10
-done
-exec /usr/bin/firefox --kiosk https://demo.home-assistant.io/#/energy
-EOF
+COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/ && \
+     files/user-templates-standard /etc/accountsservice/user-templates/standard && \
+     files/gdm-custom.conf    /etc/gdm/custom.conf
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
 
 RUN systemctl set-default graphical.target &&  systemctl enable cockpit.socket
-
-RUN cat > /etc/accountsservice/user-templates/standard <<EOF
-[Template]
-EnvironmentFiles=/etc/os-release;
-
-[com.redhat.AccountsServiceUser.System]
-id='${ID}'
-version-id='${VERSION_ID}'
-
-[User]
-Session=gnome-kiosk-script
-Icon=${HOME}/.face
-EOF
-
-
-RUN cat > /etc/gdm/custom.conf <<EOF
-[daemon]
-AutomaticLoginEnable=True
-AutomaticLogin=kiosk
-
-# Uncomment the line below to force the login screen to use Xorg
-#WaylandEnable=false
-
-[security]
-
-[xdmcp]
-
-[chooser]
-
-[debug]
-# Uncomment the line below to turn on debugging
-#Enable=true
-EOF
-
 
 
 
