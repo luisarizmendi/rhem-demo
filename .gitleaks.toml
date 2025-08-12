@@ -1,8 +1,5 @@
-
-
 [allowlist]
-  description = "Global Allowlist"
+  description = "Ignore config.yaml in devices"
   paths = [
-    '''*config.yaml'''
+    "devices/**/config.yaml"
   ]
-
