@@ -476,13 +476,14 @@ jobs:
   summary:
     name: Build Summary
     #needs: [detect-changes, setup, build-image, create-manifest, build-artifacts]
-    needs: [detect-changes, setup, build-image, create-manifest]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
-    if: always() && needs.detect-changes.outputs.has-changes == 'true'
+    if: always()
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}
     steps:
       - name: Print build summary
+        if: needs.detect-changes.outputs.has-changes == 'true'
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "### Device Types Built" >> $GITHUB_STEP_SUMMARY
@@ -510,13 +511,39 @@ jobs:
           
           echo "### Build Status" >> $GITHUB_STEP_SUMMARY
           echo "- Change Detection: ${{ needs.detect-changes.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Base Image Build: ${{ needs.build-image.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Manifest Creation: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.setup.result }}" != "" ]; then
+            echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.build-image.result }}" != "" ]; then
+            echo "- Base Image Build: ${{ needs.build-image.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.create-manifest.result }}" != "" ]; then
+            echo "- Manifest Creation: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
           #echo "- Artifact Build: ${{ needs.build-artifacts.result }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Print no changes message
         if: needs.detect-changes.outputs.has-changes == 'false'
         run: |
           echo "## No Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "No changes were detected in any device type directories. Build skipped." >> $GITHUB_STEP_SUMMARY
+          echo "No changes were detected in any device type directories under \`devices/\`." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Device Types" >> $GITHUB_STEP_SUMMARY
+          if [ -d "devices" ]; then
+            for dir in devices/*/; do
+              if [ -d "$dir" ]; then
+                device_name=$(basename "$dir")
+                echo "- \`$device_name\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "No devices directory found." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To trigger a build:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Make changes to files in any \`devices/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
+          echo "- Run workflow manually and specify device types to build" >> $GITHUB_STEP_SUMMARY
+
+      - name: Checkout for no-changes summary
+        if: needs.detect-changes.outputs.has-changes == 'false'
+        uses: actions/checkout@v4
