@@ -1,8 +1,9 @@
 FROM registry.redhat.io/rhel9/rhel-bootc:9.6
 
-
+################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
 # Subscribe
+################################################################################
 RUN --mount=type=secret,id=username \
     --mount=type=secret,id=password \
     echo "Registering with Red Hat subscription manager..." && \
@@ -14,6 +15,11 @@ RUN --mount=type=secret,id=username \
     rm -f /tmp/register_output
 ################################################################################
 
+
+
+################################################################################
+#Red Hat Edge Manager
+################################################################################
 RUN dnf -y copr enable @redhat-et/flightctl && \
     dnf -y install flightctl-agent && \
     dnf -y clean all && \
@@ -29,6 +35,75 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
 
 ADD config.yaml /etc/flightctl/
 
+
+
+
+
+################################################################################
+# Customization
+################################################################################
+
+RUN dnf install -y firewalld shadow-utils gnome-kiosk gdm gnome-kiosk-script-session cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
+    && dnf clean all
+
+RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
+    firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
+    firewall-offline-cmd  --zone=public --add-port=80/tcp
+
+RUN mkdir -p /var/home/kiosk/.local/bin/ && \
+cat > /var/home/kiosk/.local/bin/gnome-kiosk-script  <<EOF
+#!/bin/sh
+set -Eeuo pipefail
+export MOZ_ENABLE_WAYLAND=1
+while ! curl -sf --connect-timeout 5 --expect100-timeout 5 https://demo.home-assistant.io/#/energy; do
+    echo "Waiting for the Kiosk APP to become available..."
+    sleep 10
+done
+exec /usr/bin/firefox --kiosk https://demo.home-assistant.io/#/energy
+EOF
+
+RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
+    chown -R kiosk:kiosk /var/home/kiosk
+
+RUN systemctl set-default graphical.target &&  systemctl enable cockpit.socket
+
+RUN cat > /etc/accountsservice/user-templates/standard <<EOF
+[Template]
+EnvironmentFiles=/etc/os-release;
+
+[com.redhat.AccountsServiceUser.System]
+id='${ID}'
+version-id='${VERSION_ID}'
+
+[User]
+Session=gnome-kiosk-script
+Icon=${HOME}/.face
+EOF
+
+
+RUN cat > /etc/gdm/custom.conf <<EOF
+[daemon]
+AutomaticLoginEnable=True
+AutomaticLogin=kiosk
+
+# Uncomment the line below to force the login screen to use Xorg
+#WaylandEnable=false
+
+[security]
+
+[xdmcp]
+
+[chooser]
+
+[debug]
+# Uncomment the line below to turn on debugging
+#Enable=true
+EOF
+
+
+
+
+################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
 # Clean-up and unregistering
 RUN --mount=type=secret,id=username \
