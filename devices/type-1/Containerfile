@@ -14,3 +14,4 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
      systemctl enable podman.service
 
 ADD config.yaml /etc/flightctl/
+
