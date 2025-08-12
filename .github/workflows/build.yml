@@ -1,0 +1,152 @@
+name: Build bootc image with artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to build (comma-separated)'
+        required: true
+        default: 'linux/amd64,linux/arm64'
+      formats:
+        description: 'Export formats (comma-separated)'
+        required: true
+        default: 'anaconda-iso,qcow2'
+  push:
+    branches:
+      - main
+
+jobs:
+  # Setup job: Detect changed devices and prepare build matrix
+  setup:
+    name: Setup build parameters
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.params.outputs.platforms }}
+      formats: ${{ steps.params.outputs.formats }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed device directories
+        id: detect
+        run: |
+          # Find changed files between commits (handles push and workflow_dispatch)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # In manual runs, build all device directories
+            CHANGED_DIRS=$(find devices -mindepth 1 -maxdepth 1 -type d)
+          else
+            CHANGED_DIRS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+              | grep '^devices/' \
+              | cut -d/ -f1-2 \
+              | sort -u)
+          fi
+
+          if [ -z "$CHANGED_DIRS" ]; then
+            echo "No device directories changed."
+            echo "matrix=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Changed directories:"
+          echo "$CHANGED_DIRS"
+
+          # Create matrix JSON including dir field
+          MATRIX_JSON="["
+          for DIR in $CHANGED_DIRS; do
+            if [ "$MATRIX_JSON" != "[" ]; then MATRIX_JSON="$MATRIX_JSON,"; fi
+            MATRIX_JSON="$MATRIX_JSON{\"dir\":\"$DIR\"}"
+          done
+          MATRIX_JSON="$MATRIX_JSON]"
+
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+
+      - name: Setup build parameters
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PLATFORMS="${{ github.event.inputs.platforms }}"
+            FORMATS="${{ github.event.inputs.formats }}"
+          else
+            PLATFORMS="linux/amd64,linux/arm64"
+            FORMATS="anaconda-iso,qcow2"
+          fi
+
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "formats=$FORMATS" >> $GITHUB_OUTPUT
+
+  # Matrix job: Build the bootc image for each changed device directory and platform
+  build-image:
+    name: Build BootC image
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: device-example
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+      PLATFORMS: ${{ needs.setup.outputs.platforms }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Red Hat Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: registry.redhat.io
+          username: ${{ secrets.RH_USERNAME }}
+          password: ${{ secrets.RH_PASSWORD }}
+
+      - name: Prepare Buildah secrets for container subscription
+        run: |
+          echo "${{ secrets.RH_USERNAME }}" > secret-username
+          echo "${{ secrets.RH_PASSWORD }}" > secret-password
+          chmod 600 secret-username secret-password
+
+      - name: Build image for directory ${{ matrix.dir }}
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}-${{ matrix.dir }}
+          tags: |
+            latest
+            ${{ github.sha }}
+          platforms: ${{ env.PLATFORMS }}
+          context: ${{ matrix.dir }}
+          containerfiles: |
+            ${{ matrix.dir }}/Containerfile
+          extra-args: |
+            --secret id=username,src=secret-username
+            --secret id=password,src=secret-password
+            --pull=always
+
+      - name: Cleanup secret files
+        run: rm -f secret-username secret-password
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image to GHCR
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ${{ env.REGISTRY }}
+
+  summary:
+    name: Build Summary
+    needs: [setup, build-image]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Print build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Changed device directories built:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.setup.outputs.matrix }}" >> $GITHUB_STEP_SUMMARY
