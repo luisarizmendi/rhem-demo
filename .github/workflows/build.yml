@@ -232,18 +232,11 @@ jobs:
 
   # Job: Create multi-platform manifest for each device type
   create-manifest:
-    name: Create multi-platform manifest
+    name: Create multi-platform manifests
     needs: [setup, build-image]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        device-type: ${{ fromJson(format('["{0}"]', needs.setup.outputs.device-types)) }}
     env:
-      IMAGE_NAME: device-example-${{ matrix.device-type }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
-    outputs:
-      manifest-latest-${{ matrix.device-type }}: ${{ steps.create.outputs.manifest-latest }}
-      manifest-sha-${{ matrix.device-type }}: ${{ steps.create.outputs.manifest-sha }}
     steps:
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
@@ -252,54 +245,56 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push multi-platform manifest
-        id: create
+      - name: Create and push multi-platform manifests
         run: |
           set -euo pipefail
           
-          IMAGE_BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          LATEST_MANIFEST="${IMAGE_BASE}:latest"
-          SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
+          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
           
-          echo "Creating multi-platform manifests for device type: ${{ matrix.device-type }}"
-          echo "Latest manifest: $LATEST_MANIFEST"
-          echo "SHA manifest: $SHA_MANIFEST"
-          
-          # Remove existing manifests if they exist
-          podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
-          podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
-          
-          # Create new manifests
-          podman manifest create "$LATEST_MANIFEST"
-          podman manifest create "$SHA_MANIFEST"
-          
-          # Add platform-specific images to manifests
-          IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
-          for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-            ARCH="${PLATFORM#linux/}"
-            PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
-            PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+            IMAGE_NAME="device-example-${DEVICE_TYPE}"
+            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+            LATEST_MANIFEST="${IMAGE_BASE}:latest"
+            SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
             
-            echo "Processing platform: $PLATFORM (arch: $ARCH)"
-            echo "  Adding $PLATFORM_LATEST to latest manifest"
-            echo "  Adding $PLATFORM_SHA to SHA manifest"
+            echo "Creating multi-platform manifests for device type: $DEVICE_TYPE"
+            echo "Latest manifest: $LATEST_MANIFEST"
+            echo "SHA manifest: $SHA_MANIFEST"
             
-            # Add to manifests with proper architecture specification
-            podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
-            podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
+            # Remove existing manifests if they exist
+            podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
+            podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
+            
+            # Create new manifests
+            podman manifest create "$LATEST_MANIFEST"
+            podman manifest create "$SHA_MANIFEST"
+            
+            # Add platform-specific images to manifests
+            IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+              ARCH="${PLATFORM#linux/}"
+              PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
+              PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+              
+              echo "Processing platform: $PLATFORM (arch: $ARCH) for device: $DEVICE_TYPE"
+              echo "  Adding $PLATFORM_LATEST to latest manifest"
+              echo "  Adding $PLATFORM_SHA to SHA manifest"
+              
+              # Add to manifests with proper architecture specification
+              podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
+              podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
+            done
+            
+            echo "Inspecting created manifests for $DEVICE_TYPE..."
+            podman manifest inspect "$LATEST_MANIFEST"
+            podman manifest inspect "$SHA_MANIFEST"
+            
+            echo "Pushing multi-platform manifests for $DEVICE_TYPE..."
+            podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
+            podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
+            
+            echo "Multi-platform manifests for $DEVICE_TYPE created and pushed successfully!"
           done
-          
-          echo "Inspecting created manifests..."
-          podman manifest inspect "$LATEST_MANIFEST"
-          podman manifest inspect "$SHA_MANIFEST"
-          
-          echo "Pushing multi-platform manifests..."
-          podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
-          podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
-          
-          echo "Multi-platform manifests created and pushed successfully!"
-          echo "manifest-latest=$LATEST_MANIFEST" >> $GITHUB_OUTPUT
-          echo "manifest-sha=$SHA_MANIFEST" >> $GITHUB_OUTPUT
 
   ##
   # Need custom RHEL runner for subscriptions 
@@ -500,15 +495,15 @@ jobs:
           IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
           for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
             echo "#### Device Type: $DEVICE_TYPE" >> $GITHUB_STEP_SUMMARY
-            echo "- Latest: ${{ env.REGISTRY }}/bootc-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "- SHA: ${{ env.REGISTRY }}/bootc-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "- SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
             IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
             for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
               ARCH="${PLATFORM#linux/}"
-              echo "- $ARCH: ${{ env.REGISTRY }}/bootc-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
             done
             echo "" >> $GITHUB_STEP_SUMMARY
           done
