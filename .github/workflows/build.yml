@@ -188,10 +188,9 @@ jobs:
               
               # Get existing tags from the registry
               EXISTING_TAGS=""
-              if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
-                # Extract version tags (v1, v2, v3, etc.)
-                EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
-                  grep -oE 'v[0-9]+$' | \
+              if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+                EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json | \
+                  grep -oE '^v[0-9]+$' | \
                   sort -V || echo "")
               fi
               
@@ -232,10 +231,9 @@ jobs:
               
               # Get existing tags from the registry
               EXISTING_TAGS=""
-              if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
-                # Extract version tags (v1, v2, v3, etc.)
-                EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
-                  grep -oE 'v[0-9]+$' | \
+              if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+                EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json | \
+                  grep -oE '^v[0-9]+$' | \
                   sort -V || echo "")
               fi
               
