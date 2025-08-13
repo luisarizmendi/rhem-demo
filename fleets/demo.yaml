@@ -2,22 +2,21 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels: {}
-  name: workshop
+  name: demo
   resourceVersion: "4"
 spec:
   selector:
     matchLabels:
-      fleet: "workshop"
+      fleet: "demo"
   template:
     metadata:
       labels:
-        fleet: workshop
+        fleet: demo
     spec:
       applications:
-      - envVars:
-          IMAGE_NAME: quay.io/luisarizmendi/modelcar-hardhat:v1
-        image: quay.io/luisarizmendi/compose-triton:latest
-        name: triton
+      - envVars: {}
+        image: ghcr.io/luisarizmendi/app-demo-elk:latest
+        name: elk
       config:
       - name: motd-update
         configType: InlineConfigProviderSpec
@@ -28,20 +27,20 @@ spec:
       - gitRef:
           mountPath: /
           path: /configs/site/{{ .metadata.labels.site }}
-          repository: user01-fleet-mgmt
+          repository: rhem-demo
           targetRevision: main
         name: site-config
       - gitRef:
           mountPath: /
           path: /configs/function/{{ .metadata.labels.function }}
-          repository: user01-fleet-mgmt
+          repository: rhem-demo
           targetRevision: main
         name: function-config
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: workshop-registry-quay-openshift-operators.apps.cluster-bndlv.bndlv.sandbox2791.opentlc.com/user01/type-1:prod
+        image: ghcr.io/luisarizmendi/device-example-kiosk:v1
 
 
 
