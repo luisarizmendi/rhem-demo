@@ -180,7 +180,7 @@ jobs:
             IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
             
             for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-              IMAGE_NAME="device-example-${DEVICE_TYPE}"
+              IMAGE_NAME="device-demo-${DEVICE_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               
               echo "Determining version for device type: $DEVICE_TYPE"
@@ -224,7 +224,7 @@ jobs:
             IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
             
             for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="apps-example-${APP_TYPE}"
+              IMAGE_NAME="app-demo-${APP_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               
               echo "Determining version for app type: $APP_TYPE"
@@ -374,7 +374,7 @@ jobs:
       image: ${{ steps.build.outputs.image }}
       tags: ${{ steps.build.outputs.tags }}
     env:
-      IMAGE_NAME: ${{ matrix.category == 'device' && format('device-example-{0}', matrix.type) || format('apps-example-{0}', matrix.type) }}
+      IMAGE_NAME: ${{ matrix.category == 'device' && format('device-demo-{0}', matrix.type) || format('app-demo-{0}', matrix.type) }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
     steps:
       - name: Checkout code
@@ -503,7 +503,7 @@ jobs:
             DEVICE_VERSIONS='${{ needs.setup.outputs.device-versions }}'
             
             for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-              IMAGE_NAME="device-example-${DEVICE_TYPE}"
+              IMAGE_NAME="device-demo-${DEVICE_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               LATEST_MANIFEST="${IMAGE_BASE}:latest"
               SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
@@ -577,7 +577,7 @@ jobs:
             APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
             
             for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="apps-example-${APP_TYPE}"
+              IMAGE_NAME="app-demo-${APP_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               LATEST_MANIFEST="${IMAGE_BASE}:latest"
               SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
@@ -678,9 +678,9 @@ jobs:
             for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
               VERSION=$(echo "$DEVICE_VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
               echo "#### Device Type: $DEVICE_TYPE" >> $GITHUB_STEP_SUMMARY
-              echo "- Latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-              echo "- SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-              echo "- Version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+              echo "- Latest: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+              echo "- SHA: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              echo "- Version: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               
               echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
@@ -695,10 +695,10 @@ jobs:
                 else
                   ARCH_TAG="$ARCH"
                 fi
-                echo "- $ARCH latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH specific: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH latest: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH SHA: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH version: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH specific: ${{ env.REGISTRY }}/device-demo-${DEVICE_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
               done
               echo "" >> $GITHUB_STEP_SUMMARY
             done
@@ -712,9 +712,9 @@ jobs:
             for APP_TYPE in "${APP_ARRAY[@]}"; do
               VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
               echo "#### App Type: $APP_TYPE" >> $GITHUB_STEP_SUMMARY
-              echo "- Latest: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-              echo "- SHA: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-              echo "- Version: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+              echo "- Latest: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+              echo "- SHA: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              echo "- Version: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               
               echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
@@ -729,10 +729,10 @@ jobs:
                 else
                   ARCH_TAG="$ARCH"
                 fi
-                echo "- $ARCH latest: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH SHA: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH version: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH specific: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH latest: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH SHA: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH version: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH specific: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
               done
               echo "" >> $GITHUB_STEP_SUMMARY
             done
