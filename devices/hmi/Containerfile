@@ -47,6 +47,8 @@ RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
     firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
     firewall-offline-cmd  --zone=public --add-port=80/tcp
 
+RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates/standard /etc/gdm/
+
 COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/ && \
      files/user-templates-standard /etc/accountsservice/user-templates/standard && \
      files/gdm-custom.conf    /etc/gdm/custom.conf
