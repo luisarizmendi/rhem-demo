@@ -68,6 +68,7 @@ RUN systemctl set-default multi-user.target &&  systemctl enable cockpit.socket
 
 
 
+
 ################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
 # Clean-up and unregistering

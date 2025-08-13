@@ -35,6 +35,7 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
 ADD config.yaml /etc/flightctl/
 
 
+
 ################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
 # Clean-up and unregistering

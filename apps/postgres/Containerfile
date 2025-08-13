@@ -2,5 +2,5 @@ FROM scratch
 
 COPY compose.yaml /podman-compose.yaml
 
-# required
+# Required
 LABEL appType="compose"
