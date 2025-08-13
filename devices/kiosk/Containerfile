@@ -42,7 +42,7 @@ ADD config.yaml /etc/flightctl/
 
 RUN useradd -m -d /var/home/kiosk kiosk 
 
-RUN dnf install -y firewalld shadow-utils gnome-kiosk gdm gnome-kiosk-script-session cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
+RUN dnf install -y stress firewalld shadow-utils gnome-kiosk gdm gnome-kiosk-script-session cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
     && dnf clean all
 
 RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
