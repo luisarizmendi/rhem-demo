@@ -45,6 +45,7 @@ RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
     firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
     firewall-offline-cmd  --zone=public --add-port=80/tcp
 
+    
 
 ################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
