@@ -10,9 +10,12 @@ services:
     restart: always
 
   pgadmin:
-    image: docker.io/dpage/pgadmin4:9.5
-# DEMO v2 (comment out line above)
+    image: docker.io/dpage/pgadmin4:9.6
+#////////////////////////////////////////
+#DEMO V2 update (new image version)
 #    image: docker.io/dpage/pgadmin4:9.6
+#////////////////////////////////////////
+
 
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_MAIL}
