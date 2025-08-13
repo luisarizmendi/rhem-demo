@@ -55,11 +55,7 @@ jobs:
             echo "$CHANGED_FILES"
             
             # Extract unique device types from changed files in devices/ directory
-            if echo "$CHANGED_FILES" | grep -q '^devices/[^/]\+/'; then
-              DEVICE_TYPES=$(echo "$CHANGED_FILES" | grep -E '^devices/[^/]+/' | sed 's|^devices/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
-            else
-              DEVICE_TYPES=""
-            fi
+            DEVICE_TYPES=$(echo "$CHANGED_FILES" | grep -E '^devices/[^/]+/' | sed 's|^devices/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
             
             if [ -z "$DEVICE_TYPES" ]; then
               echo "No device type changes detected"
@@ -90,17 +86,90 @@ jobs:
             echo "All device types validated successfully"
           fi
 
+  # Determine version tags for each device type
+  determine-versions:
+    name: Determine version tags
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-changes == 'true'
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version numbers
+        id: versions
+        run: |
+          set -euo pipefail
+          
+          # Initialize versions JSON object
+          VERSIONS_JSON='{'
+          FIRST=true
+          
+          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
+          
+          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+            IMAGE_NAME="device-example-${DEVICE_TYPE}"
+            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+            
+            echo "Determining version for device type: $DEVICE_TYPE"
+            echo "Image base: $IMAGE_BASE"
+            
+            # Get existing tags from the registry
+            EXISTING_TAGS=""
+            if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
+              # Extract version tags (v1, v2, v3, etc.)
+              EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
+                grep -oE 'v[0-9]+$' | \
+                sort -V || echo "")
+            fi
+            
+            if [ -z "$EXISTING_TAGS" ]; then
+              echo "No existing version tags found for $DEVICE_TYPE, starting with v1"
+              NEXT_VERSION="v1"
+            else
+              # Find the highest version number
+              HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+              HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+              NEXT_NUM=$((HIGHEST_NUM + 1))
+              NEXT_VERSION="v${NEXT_NUM}"
+              echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
+            fi
+            
+            # Add to JSON object
+            if [ "$FIRST" = false ]; then
+              VERSIONS_JSON="${VERSIONS_JSON},"
+            fi
+            FIRST=false
+            
+            VERSIONS_JSON="${VERSIONS_JSON}\"${DEVICE_TYPE}\":\"${NEXT_VERSION}\""
+            
+            echo "Device type $DEVICE_TYPE will use version: $NEXT_VERSION"
+          done
+          
+          VERSIONS_JSON="${VERSIONS_JSON}}"
+          echo "versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "Final versions JSON: $VERSIONS_JSON"
+
   # Setup job: Parse build parameters
   setup:
     name: Setup build parameters
     runs-on: ubuntu-latest
-    needs: detect-changes
+    needs: [detect-changes, determine-versions]
     if: needs.detect-changes.outputs.has-changes == 'true'
     outputs:
       platforms: ${{ steps.setup.outputs.platforms }}
       formats: ${{ steps.setup.outputs.formats }}
       matrix: ${{ steps.setup.outputs.matrix }}
       device-types: ${{ needs.detect-changes.outputs.device-types }}
+      versions: ${{ needs.determine-versions.outputs.versions }}
     steps:
       - name: Setup build parameters
         id: setup
@@ -167,6 +236,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get version for this device type
+        id: version
+        run: |
+          # Extract version from the versions JSON
+          VERSIONS='${{ needs.setup.outputs.versions }}'
+          VERSION=$(echo "$VERSIONS" | jq -r '."${{ matrix.device-type }}"')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version for ${{ matrix.device-type }}: $VERSION"
+
       - name: Verify Containerfile exists
         run: |
           CONTAINERFILE_PATH=""
@@ -194,6 +272,20 @@ jobs:
           echo "${{ secrets.RH_PASSWORD }}" > secret-password
           chmod 600 secret-username secret-password
 
+      - name: Set architecture tag
+        id: arch-tag
+        run: |
+          ARCH="${{ matrix.arch }}"
+          if [ "$ARCH" = "amd64" ]; then
+            ARCH_TAG="x86"
+          elif [ "$ARCH" = "arm64" ]; then
+            ARCH_TAG="arm"
+          else
+            ARCH_TAG="$ARCH"
+          fi
+          echo "arch-tag=$ARCH_TAG" >> $GITHUB_OUTPUT
+          echo "Architecture tag for $ARCH: $ARCH_TAG"
+
       - name: Build platform-specific image with Buildah
         id: build
         uses: redhat-actions/buildah-build@v2
@@ -202,6 +294,8 @@ jobs:
           tags: |
             latest-${{ matrix.arch }}
             ${{ github.sha }}-${{ matrix.arch }}
+            ${{ steps.version.outputs.version }}-${{ matrix.arch }}
+            ${{ steps.arch-tag.outputs.arch-tag }}
           platforms: ${{ matrix.platform }}
           context: devices/${{ matrix.device-type }}
           containerfiles: |
@@ -254,6 +348,7 @@ jobs:
           set -euo pipefail
           
           IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
+          VERSIONS='${{ needs.setup.outputs.versions }}'
           
           for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
             IMAGE_NAME="device-example-${DEVICE_TYPE}"
@@ -261,17 +356,24 @@ jobs:
             LATEST_MANIFEST="${IMAGE_BASE}:latest"
             SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
             
+            # Get version for this device type
+            VERSION=$(echo "$VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
+            VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
+            
             echo "Creating multi-platform manifests for device type: $DEVICE_TYPE"
             echo "Latest manifest: $LATEST_MANIFEST"
             echo "SHA manifest: $SHA_MANIFEST"
+            echo "Version manifest: $VERSION_MANIFEST"
             
             # Remove existing manifests if they exist
             podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
             podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
+            podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
             
             # Create new manifests
             podman manifest create "$LATEST_MANIFEST"
             podman manifest create "$SHA_MANIFEST"
+            podman manifest create "$VERSION_MANIFEST"
             
             # Add platform-specific images to manifests
             IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
@@ -279,208 +381,47 @@ jobs:
               ARCH="${PLATFORM#linux/}"
               PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
               PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+              PLATFORM_VERSION="${IMAGE_BASE}:${VERSION}-${ARCH}"
               
-              echo "Processing platform: $PLATFORM (arch: $ARCH) for device: $DEVICE_TYPE"
+              # Set architecture tag
+              if [ "$ARCH" = "amd64" ]; then
+                ARCH_TAG="x86"
+              elif [ "$ARCH" = "arm64" ]; then
+                ARCH_TAG="arm"
+              else
+                ARCH_TAG="$ARCH"
+              fi
+              
+              echo "Processing platform: $PLATFORM (arch: $ARCH, tag: $ARCH_TAG) for device: $DEVICE_TYPE"
               echo "  Adding $PLATFORM_LATEST to latest manifest"
               echo "  Adding $PLATFORM_SHA to SHA manifest"
+              echo "  Adding $PLATFORM_VERSION to version manifest"
+              echo "  Architecture tag: ${IMAGE_BASE}:${ARCH_TAG}"
               
               # Add to manifests with proper architecture specification
               podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
               podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
+              podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://$PLATFORM_VERSION"
             done
             
             echo "Inspecting created manifests for $DEVICE_TYPE..."
             podman manifest inspect "$LATEST_MANIFEST"
             podman manifest inspect "$SHA_MANIFEST"
+            podman manifest inspect "$VERSION_MANIFEST"
             
             echo "Pushing multi-platform manifests for $DEVICE_TYPE..."
             podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
             podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
+            podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
             
             echo "Multi-platform manifests for $DEVICE_TYPE created and pushed successfully!"
+            echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
           done
-
-  ##
-  # Need custom RHEL runner for subscriptions 
-  #
-  ##
-  # # Matrix job: Build artifacts for each platform/format/device-type combination
-  # build-artifacts:
-  #   name: Build artifacts
-  #   needs: [setup, build-image, create-manifest]
-  #   strategy:
-  #     fail-fast: false
-  #     matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
-  #   runs-on: ${{ matrix.runner }}
-  #   env:
-  #     REGISTRY: ghcr.io/${{ github.repository_owner }}
-  #     IMAGE_NAME: device-example-${{ matrix.device-type }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-
-  #     - name: Parse platform
-  #       id: platform
-  #       run: |
-  #         echo "arch=${{ matrix.arch }}" >> $GITHUB_OUTPUT
-  #         echo "safe_arch=${{ matrix.arch }}" >> $GITHUB_OUTPUT
-
-  #     - name: Set up QEMU (only for cross-platform builds if needed)
-  #       if: matrix.platform != 'linux/amd64' && matrix.runner == 'ubuntu-latest'
-  #       uses: docker/setup-qemu-action@v3
-
-  #     - name: Enable binfmt_misc (only for emulated builds)
-  #       if: matrix.platform != 'linux/amd64' && matrix.runner == 'ubuntu-latest'
-  #       run: |
-  #         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || echo "binfmt setup completed"
-
-  #     - name: Log in to GitHub Container Registry
-  #       uses: redhat-actions/podman-login@v1
-  #       with:
-  #         registry: ${{ env.REGISTRY }}
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Create or use device-specific config.toml
-  #       run: |
-  #         CONFIG_PATH="devices/${{ matrix.device-type }}/config.toml"
-  #         if [ -f "$CONFIG_PATH" ]; then
-  #           echo "Using device-specific config: $CONFIG_PATH"
-  #           cp "$CONFIG_PATH" ./config.toml
-  #         elif [ ! -f config.toml ]; then
-  #           echo "Creating default config.toml"
-  #           cat > config.toml << 'EOF'
-  #         [[runner]]
-  #         name = "org.osbuild.rhel90"
-  #         label = "rhel-9.0-x86_64"
-  #         distro = "rhel-90"
-  #         EOF
-  #         fi
-
-  #     - name: Build artifacts for each format
-  #       run: |
-  #         set -euo pipefail
-          
-  #         # Use the device-specific multi-platform manifest image for artifact building
-  #         IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-  #         PLATFORM="${{ matrix.platform }}"
-  #         ARCH="${{ matrix.arch }}"
-  #         DEVICE_TYPE="${{ matrix.device-type }}"
-          
-  #         echo "Building artifacts from multi-platform image: $IMAGE"
-  #         echo "Target platform: $PLATFORM"
-  #         echo "Target architecture: $ARCH"
-  #         echo "Device type: $DEVICE_TYPE"
-          
-  #         # Parse formats from job output
-  #         IFS=',' read -ra FORMATS <<< "${{ needs.setup.outputs.formats }}"
-          
-  #         # Create output directory
-  #         mkdir -p ./bootc-exports/$DEVICE_TYPE/$ARCH
-          
-  #         for FORMAT in "${FORMATS[@]}"; do
-  #           echo "Building $FORMAT for $PLATFORM (device: $DEVICE_TYPE)"
-            
-  #           IMAGE_NAME_TAG=$(basename "$IMAGE")
-  #           SANITIZED_NAME_TAG=$(echo "$IMAGE_NAME_TAG" | sed 's/:/_/')
-  #           DIR_NAME=$(echo "$SANITIZED_NAME_TAG" | sed 's/[^A-Za-z0-9._-]/_/g')
-  #           DIR_NAME=${DIR_NAME}-${FORMAT}
-            
-  #           OUTPUT_DIR="./bootc-exports/$DEVICE_TYPE/$ARCH/$DIR_NAME"
-  #           mkdir -p "$OUTPUT_DIR"
-            
-  #           # Pull the multi-platform image and let podman select the right arch
-  #           echo "Pulling multi-platform image: $IMAGE"
-  #           podman pull --platform=$PLATFORM $IMAGE
-            
-  #           echo "Building $FORMAT artifact for $ARCH architecture (device: $DEVICE_TYPE)"
-            
-  #           # Run bootc-image-builder
-  #           sudo podman run \
-  #             --platform=$PLATFORM \
-  #             --rm \
-  #             --privileged \
-  #             --pull=newer \
-  #             --security-opt label=type:unconfined_t \
-  #             -v ./config.toml:/config.toml:z \
-  #             -v "$PWD/$OUTPUT_DIR:/output" \
-  #             -v /var/lib/containers/storage:/var/lib/containers/storage \
-  #             registry.redhat.io/rhel9/bootc-image-builder:latest \
-  #             --target-arch $ARCH \
-  #             --type $FORMAT \
-  #             --use-librepo=True \
-  #             $IMAGE
-            
-  #           echo "Artifact built successfully in $OUTPUT_DIR"
-  #           ls -la "$OUTPUT_DIR"
-            
-  #           # Upload artifact to OCI registry - use device-specific image base for diskimage repo
-  #           IMAGE_BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-  #           OCI_DISK_IMAGE_REPO=${IMAGE_BASE}/diskimage-${FORMAT}
-  #           OCI_IMAGE_TAG=${{ github.sha }}-${ARCH}
-            
-  #           # Create manifest
-  #           sudo podman manifest create ${OCI_DISK_IMAGE_REPO}:${OCI_IMAGE_TAG} || true
-            
-  #           # Determine artifact type and file path
-  #           case "$FORMAT" in
-  #             "anaconda-iso")
-  #               ARTIFACT_TYPE="application/vnd.diskimage.iso"
-  #               FILE_PATH="$OUTPUT_DIR/bootiso/install.iso"
-  #               ;;
-  #             "qcow2")
-  #               ARTIFACT_TYPE="application/vnd.diskimage.qcow2"
-  #               FILE_PATH="$OUTPUT_DIR/qcow2/disk.qcow2"
-  #               ;;
-  #             "vmdk")
-  #               ARTIFACT_TYPE="application/vnd.diskimage.vmdk"
-  #               FILE_PATH="$OUTPUT_DIR/vmdk/disk.vmdk"
-  #               ;;
-  #             "raw")
-  #               ARTIFACT_TYPE="application/vnd.diskimage.raw"
-  #               FILE_PATH="$OUTPUT_DIR/image/disk.raw"
-  #               ;;
-  #             *)
-  #               echo "Unknown format: $FORMAT"
-  #               continue
-  #               ;;
-  #           esac
-            
-  #           # Check if file exists
-  #           if [ ! -f "$FILE_PATH" ]; then
-  #             echo "Error: Expected file not found at $FILE_PATH"
-  #             echo "Available files:"
-  #             find "$OUTPUT_DIR" -type f
-  #             continue
-  #           fi
-            
-  #           echo "Adding artifact to manifest"
-  #           sudo podman manifest add \
-  #             --artifact --artifact-type $ARTIFACT_TYPE \
-  #             --arch $ARCH --os=linux \
-  #             ${OCI_DISK_IMAGE_REPO}:${OCI_IMAGE_TAG} \
-  #             "$FILE_PATH"
-            
-  #           echo "Pushing manifest to registry"
-  #           sudo podman manifest push --all \
-  #             ${OCI_DISK_IMAGE_REPO}:${OCI_IMAGE_TAG} \
-  #             docker://${OCI_DISK_IMAGE_REPO}:${OCI_IMAGE_TAG}
-            
-  #           echo "Successfully pushed $FORMAT artifact for $ARCH (device: $DEVICE_TYPE)"
-  #         done
-
-  #     - name: Upload build artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: bootc-artifacts-${{ matrix.device-type }}-${{ steps.platform.outputs.safe_arch }}
-  #         path: ./bootc-exports/
-  #         retention-days: 7
 
   # Summary job
   summary:
     name: Build Summary
-    #needs: [detect-changes, setup, build-image, create-manifest, build-artifacts]
-    needs: [detect-changes]
+    needs: [detect-changes, setup, build-image, create-manifest]
     runs-on: ubuntu-latest
     if: always()
     env:
@@ -493,38 +434,46 @@ jobs:
           echo "### Device Types Built" >> $GITHUB_STEP_SUMMARY
           echo "- Device Types: ${{ needs.setup.outputs.device-types }}" >> $GITHUB_STEP_SUMMARY
           echo "- Platforms: ${{ needs.setup.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
-          #echo "- Artifact Formats: ${{ needs.setup.outputs.formats }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           echo "### Multi-platform Images" >> $GITHUB_STEP_SUMMARY
           IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
+          VERSIONS='${{ needs.setup.outputs.versions }}'
+          
           for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+            VERSION=$(echo "$VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
             echo "#### Device Type: $DEVICE_TYPE" >> $GITHUB_STEP_SUMMARY
             echo "- Latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
             echo "- SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
             IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
             for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
               ARCH="${PLATFORM#linux/}"
-              echo "- $ARCH: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              # Set architecture tag
+              if [ "$ARCH" = "amd64" ]; then
+                ARCH_TAG="x86"
+              elif [ "$ARCH" = "arm64" ]; then
+                ARCH_TAG="arm"
+              else
+                ARCH_TAG="$ARCH"
+              fi
+              echo "- $ARCH latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH specific: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
             done
             echo "" >> $GITHUB_STEP_SUMMARY
           done
           
           echo "### Build Status" >> $GITHUB_STEP_SUMMARY
           echo "- Change Detection: ${{ needs.detect-changes.result }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.setup.result }}" != "" ]; then
-            echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ needs.build-image.result }}" != "" ]; then
-            echo "- Base Image Build: ${{ needs.build-image.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ needs.create-manifest.result }}" != "" ]; then
-            echo "- Manifest Creation: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          #echo "- Artifact Build: ${{ needs.build-artifacts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version Determination: ${{ needs.determine-versions.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Base Image Build: ${{ needs.build-image.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Manifest Creation: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Print no changes message
         if: needs.detect-changes.outputs.has-changes == 'false'
