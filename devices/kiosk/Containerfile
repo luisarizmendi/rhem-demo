@@ -42,12 +42,8 @@ ADD config.yaml /etc/flightctl/
 
 RUN useradd -m -d /var/home/kiosk kiosk 
 
-RUN dnf install -y stress firewalld shadow-utils gnome-kiosk gdm gnome-kiosk-script-session cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
+RUN dnf install -y shadow-utils gnome-kiosk gdm gnome-kiosk-script-session git firefox \
     && dnf clean all
-
-RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
-    firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
-    firewall-offline-cmd  --zone=public --add-port=80/tcp
 
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /etc/gdm/
 
@@ -55,14 +51,23 @@ COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/
 COPY files/user-templates-standard /etc/accountsservice/user-templates/standard
 COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 
-## DEMO: UPDATE IMAGE
-#COPY files/gdm-custom.conf.v2    /etc/gdm/custom.conf
+
+#////////////////////////////////////////
+#DEMO V2 update (cockpit + kvm + firewall)
+#////////////////////////////////////////
+RUN dnf install -y firewalld shadow-utils cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
+    && dnf clean all
+
+RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
+    firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
+    firewall-offline-cmd  --zone=public --add-port=80/tcp
 
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
 
 RUN systemctl set-default graphical.target &&  systemctl enable cockpit.socket
+#////////////////////////////////////////
 
 
 

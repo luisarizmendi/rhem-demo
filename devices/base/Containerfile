@@ -35,15 +35,16 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
 ADD config.yaml /etc/flightctl/
 
 
-################################################################################
-#DEMO V2 update
-################################################################################
-RUN dnf install -y stress firewalld shadow-utils cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
+#////////////////////////////////////////
+#DEMO V2 update (cockpit + kvm + firewall)
+#////////////////////////////////////////
+RUN dnf install -y firewalld shadow-utils cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
     && dnf clean all
 
 RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
     firewall-offline-cmd  --zone=public --add-port=9090/tcp && \
     firewall-offline-cmd  --zone=public --add-port=80/tcp
+#////////////////////////////////////////
 
 
 
