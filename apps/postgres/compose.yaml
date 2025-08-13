@@ -1,8 +1,6 @@
 services:
   postgres:
-    image: docker.io/postgres:9.5
-# DEMO v2 (comment line above)
-#    image: docker.io/postgres:9.6
+    image: docker.io/postgres:latest
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PW}
@@ -12,13 +10,15 @@ services:
     restart: always
 
   pgadmin:
-    image: docker.io/dpage/pgadmin4:latest
+    image: docker.io/dpage/pgadmin4:9.5
+# DEMO v2 (comment out line above)
+#    image: docker.io/dpage/pgadmin4:9.6
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_MAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PW}
     ports:
       - "5051:80"
-# DEMO v2 (comment line above)
+# DEMO v2 (comment out line above)
 #      - "6060:80"
 
     restart: always
