@@ -17,6 +17,14 @@ spec:
       - envVars: {}
         image: ghcr.io/luisarizmendi/app-demo-elk:latest
         name: elk
+      - envVars:
+          PGADMIN_MAIL: pgadmin@none.com
+          PGADMIN_PW: pgredhat
+          POSTGRES_DB: postgres
+          POSTGRES_PW: pgadmin
+          POSTGRES_USER: pgredhat
+        image: ghcr.io/luisarizmendi/app-demo-postgres:latest
+        name: postgres
       config:
       - name: motd-update
         configType: InlineConfigProviderSpec
