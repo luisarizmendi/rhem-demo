@@ -14,17 +14,22 @@ on:
         description: 'Device types to build (comma-separated, leave empty for all changed)'
         required: false
         default: ''
+      app_types:
+        description: 'App types to build (comma-separated, leave empty for all changed)'
+        required: false
+        default: ''
   push:
     branches:
       - main
 
 jobs:
-  # Detect changed device types
+  # Detect changed device types and app types
   detect-changes:
-    name: Detect changed device types
+    name: Detect changed types
     runs-on: ubuntu-latest
     outputs:
       device-types: ${{ steps.changes.outputs.device-types }}
+      app-types: ${{ steps.changes.outputs.app-types }}
       has-changes: ${{ steps.changes.outputs.has-changes }}
     steps:
       - name: Checkout code
@@ -32,23 +37,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect changed device types
+      - name: Detect changed types
         id: changes
         run: |
           set -euo pipefail
           
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.device_types }}" ]; then
-            # Manual dispatch with specific device types
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual dispatch with specific types
             DEVICE_TYPES="${{ github.event.inputs.device_types }}"
-            echo "Manual dispatch with device types: $DEVICE_TYPES"
+            APP_TYPES="${{ github.event.inputs.app_types }}"
+            
+            if [ -n "$DEVICE_TYPES" ]; then
+              echo "Manual dispatch with device types: $DEVICE_TYPES"
+            fi
+            if [ -n "$APP_TYPES" ]; then
+              echo "Manual dispatch with app types: $APP_TYPES"
+            fi
+            
+            # If no specific types provided, build all available
+            if [ -z "$DEVICE_TYPES" ] && [ -z "$APP_TYPES" ]; then
+              DEVICE_CHANGED_FILES=$(find devices -name "Containerfile" -o -name "containerfile" 2>/dev/null | head -20 || echo "")
+              APP_CHANGED_FILES=$(find apps -name "Containerfile" -o -name "containerfile" 2>/dev/null | head -20 || echo "")
+              
+              if [ -n "$DEVICE_CHANGED_FILES" ]; then
+                DEVICE_TYPES=$(echo "$DEVICE_CHANGED_FILES" | grep -E '^devices/[^/]+/' | sed 's|^devices/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+              fi
+              
+              if [ -n "$APP_CHANGED_FILES" ]; then
+                APP_TYPES=$(echo "$APP_CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+              fi
+            fi
           else
-            # Detect changes automatically
+            # Detect changes automatically for push events
             if [ "${{ github.event_name }}" = "push" ]; then
               # For push events, compare with previous commit
               CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
             else
-              # For manual dispatch without specific types, build all available
-              CHANGED_FILES=$(find devices -name "Containerfile" -o -name "containerfile" | head -20)
+              # Fallback - shouldn't reach here
+              CHANGED_FILES=""
             fi
             
             echo "Changed files:"
@@ -61,43 +87,73 @@ jobs:
               DEVICE_TYPES=""
             fi
             
-            if [ -z "$DEVICE_TYPES" ]; then
-              echo "No device type changes detected"
-              echo "has-changes=false" >> $GITHUB_OUTPUT
-              echo "device-types=" >> $GITHUB_OUTPUT
-              exit 0
+            # Extract unique app types from changed files in apps/ directory
+            if echo "$CHANGED_FILES" | grep -q '^apps/[^/]\+/'; then
+              APP_TYPES=$(echo "$CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+            else
+              APP_TYPES=""
             fi
           fi
           
+          if [ -z "$DEVICE_TYPES" ] && [ -z "$APP_TYPES" ]; then
+            echo "No device or app type changes detected"
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "device-types=" >> $GITHUB_OUTPUT
+            echo "app-types=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           echo "Device types to build: $DEVICE_TYPES"
+          echo "App types to build: $APP_TYPES"
           echo "has-changes=true" >> $GITHUB_OUTPUT
           echo "device-types=$DEVICE_TYPES" >> $GITHUB_OUTPUT
+          echo "app-types=$APP_TYPES" >> $GITHUB_OUTPUT
 
-      - name: Validate device types
+      - name: Validate types
         run: |
           if [ "${{ steps.changes.outputs.has-changes }}" = "true" ]; then
-            IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.device-types }}"
-            for TYPE in "${TYPES[@]}"; do
-              if [ ! -d "devices/$TYPE" ]; then
-                echo "Error: devices/$TYPE directory does not exist"
-                exit 1
-              fi
-              if [ ! -f "devices/$TYPE/Containerfile" ] && [ ! -f "devices/$TYPE/containerfile" ]; then
-                echo "Error: No Containerfile found in devices/$TYPE"
-                exit 1
-              fi
-            done
-            echo "All device types validated successfully"
+            # Validate device types
+            if [ -n "${{ steps.changes.outputs.device-types }}" ]; then
+              IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.device-types }}"
+              for TYPE in "${TYPES[@]}"; do
+                if [ ! -d "devices/$TYPE" ]; then
+                  echo "Error: devices/$TYPE directory does not exist"
+                  exit 1
+                fi
+                if [ ! -f "devices/$TYPE/Containerfile" ] && [ ! -f "devices/$TYPE/containerfile" ]; then
+                  echo "Error: No Containerfile found in devices/$TYPE"
+                  exit 1
+                fi
+              done
+              echo "All device types validated successfully"
+            fi
+            
+            # Validate app types
+            if [ -n "${{ steps.changes.outputs.app-types }}" ]; then
+              IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.app-types }}"
+              for TYPE in "${TYPES[@]}"; do
+                if [ ! -d "apps/$TYPE" ]; then
+                  echo "Error: apps/$TYPE directory does not exist"
+                  exit 1
+                fi
+                if [ ! -f "apps/$TYPE/Containerfile" ] && [ ! -f "apps/$TYPE/containerfile" ]; then
+                  echo "Error: No Containerfile found in apps/$TYPE"
+                  exit 1
+                fi
+              done
+              echo "All app types validated successfully"
+            fi
           fi
 
-  # Determine version tags for each device type
+  # Determine version tags for each type
   determine-versions:
     name: Determine version tags
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.has-changes == 'true'
     outputs:
-      versions: ${{ steps.versions.outputs.versions }}
+      device-versions: ${{ steps.versions.outputs.device-versions }}
+      app-versions: ${{ steps.versions.outputs.app-versions }}
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}
     steps:
@@ -113,54 +169,107 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Initialize versions JSON object
-          VERSIONS_JSON='{'
-          FIRST=true
+          # Initialize versions JSON objects
+          DEVICE_VERSIONS_JSON='{'
+          APP_VERSIONS_JSON='{'
+          DEVICE_FIRST=true
+          APP_FIRST=true
           
-          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
+          # Process device types
+          if [ -n "${{ needs.detect-changes.outputs.device-types }}" ]; then
+            IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
+            
+            for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+              IMAGE_NAME="device-example-${DEVICE_TYPE}"
+              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+              
+              echo "Determining version for device type: $DEVICE_TYPE"
+              echo "Image base: $IMAGE_BASE"
+              
+              # Get existing tags from the registry
+              EXISTING_TAGS=""
+              if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
+                # Extract version tags (v1, v2, v3, etc.)
+                EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
+                  grep -oE 'v[0-9]+$' | \
+                  sort -V || echo "")
+              fi
+              
+              if [ -z "$EXISTING_TAGS" ]; then
+                echo "No existing version tags found for device $DEVICE_TYPE, starting with v1"
+                NEXT_VERSION="v1"
+              else
+                # Find the highest version number
+                HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+                HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+                NEXT_NUM=$((HIGHEST_NUM + 1))
+                NEXT_VERSION="v${NEXT_NUM}"
+                echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
+              fi
+              
+              # Add to JSON object
+              if [ "$DEVICE_FIRST" = false ]; then
+                DEVICE_VERSIONS_JSON="${DEVICE_VERSIONS_JSON},"
+              fi
+              DEVICE_FIRST=false
+              
+              DEVICE_VERSIONS_JSON="${DEVICE_VERSIONS_JSON}\"${DEVICE_TYPE}\":\"${NEXT_VERSION}\""
+              
+              echo "Device type $DEVICE_TYPE will use version: $NEXT_VERSION"
+            done
+          fi
           
-          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-            IMAGE_NAME="device-example-${DEVICE_TYPE}"
-            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+          # Process app types
+          if [ -n "${{ needs.detect-changes.outputs.app-types }}" ]; then
+            IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
             
-            echo "Determining version for device type: $DEVICE_TYPE"
-            echo "Image base: $IMAGE_BASE"
-            
-            # Get existing tags from the registry
-            EXISTING_TAGS=""
-            if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
-              # Extract version tags (v1, v2, v3, etc.)
-              EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
-                grep -oE 'v[0-9]+$' | \
-                sort -V || echo "")
-            fi
-            
-            if [ -z "$EXISTING_TAGS" ]; then
-              echo "No existing version tags found for $DEVICE_TYPE, starting with v1"
-              NEXT_VERSION="v1"
-            else
-              # Find the highest version number
-              HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
-              HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
-              NEXT_NUM=$((HIGHEST_NUM + 1))
-              NEXT_VERSION="v${NEXT_NUM}"
-              echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
-            fi
-            
-            # Add to JSON object
-            if [ "$FIRST" = false ]; then
-              VERSIONS_JSON="${VERSIONS_JSON},"
-            fi
-            FIRST=false
-            
-            VERSIONS_JSON="${VERSIONS_JSON}\"${DEVICE_TYPE}\":\"${NEXT_VERSION}\""
-            
-            echo "Device type $DEVICE_TYPE will use version: $NEXT_VERSION"
-          done
+            for APP_TYPE in "${APP_ARRAY[@]}"; do
+              IMAGE_NAME="apps-example-${APP_TYPE}"
+              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+              
+              echo "Determining version for app type: $APP_TYPE"
+              echo "Image base: $IMAGE_BASE"
+              
+              # Get existing tags from the registry
+              EXISTING_TAGS=""
+              if podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | grep -q "NAME"; then
+                # Extract version tags (v1, v2, v3, etc.)
+                EXISTING_TAGS=$(podman search --list-tags "${IMAGE_BASE}" 2>/dev/null | \
+                  grep -oE 'v[0-9]+$' | \
+                  sort -V || echo "")
+              fi
+              
+              if [ -z "$EXISTING_TAGS" ]; then
+                echo "No existing version tags found for app $APP_TYPE, starting with v1"
+                NEXT_VERSION="v1"
+              else
+                # Find the highest version number
+                HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+                HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+                NEXT_NUM=$((HIGHEST_NUM + 1))
+                NEXT_VERSION="v${NEXT_NUM}"
+                echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
+              fi
+              
+              # Add to JSON object
+              if [ "$APP_FIRST" = false ]; then
+                APP_VERSIONS_JSON="${APP_VERSIONS_JSON},"
+              fi
+              APP_FIRST=false
+              
+              APP_VERSIONS_JSON="${APP_VERSIONS_JSON}\"${APP_TYPE}\":\"${NEXT_VERSION}\""
+              
+              echo "App type $APP_TYPE will use version: $NEXT_VERSION"
+            done
+          fi
           
-          VERSIONS_JSON="${VERSIONS_JSON}}"
-          echo "versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
-          echo "Final versions JSON: $VERSIONS_JSON"
+          DEVICE_VERSIONS_JSON="${DEVICE_VERSIONS_JSON}}"
+          APP_VERSIONS_JSON="${APP_VERSIONS_JSON}}"
+          
+          echo "device-versions=$DEVICE_VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "app-versions=$APP_VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "Final device versions JSON: $DEVICE_VERSIONS_JSON"
+          echo "Final app versions JSON: $APP_VERSIONS_JSON"
 
   # Setup job: Parse build parameters
   setup:
@@ -173,7 +282,9 @@ jobs:
       formats: ${{ steps.setup.outputs.formats }}
       matrix: ${{ steps.setup.outputs.matrix }}
       device-types: ${{ needs.detect-changes.outputs.device-types }}
-      versions: ${{ needs.determine-versions.outputs.versions }}
+      app-types: ${{ needs.detect-changes.outputs.app-types }}
+      device-versions: ${{ needs.determine-versions.outputs.device-versions }}
+      app-versions: ${{ needs.determine-versions.outputs.app-versions }}
     steps:
       - name: Setup build parameters
         id: setup
@@ -192,37 +303,66 @@ jobs:
           echo "Building for platforms: $PLATFORMS"
           echo "Building formats: $FORMATS"
           
-          # Create matrix for build jobs (platform x device-type combinations)
+          # Create matrix for build jobs (platform x type combinations)
           MATRIX='{"include":['
           FIRST=true
           
           IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
-          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
           
-          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-              ARCH="${PLATFORM#linux/}"
-              
-              if [ "$FIRST" = false ]; then
-                MATRIX="${MATRIX},"
-              fi
-              FIRST=false
-              
-              if [ "$ARCH" = "arm64" ]; then
-                RUNNER="ubuntu-24.04-arm"
-              else
-                RUNNER="ubuntu-latest"
-              fi
-              
-              MATRIX="${MATRIX}{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"device-type\":\"$DEVICE_TYPE\"}"
+          # Add device types to matrix
+          if [ -n "${{ needs.detect-changes.outputs.device-types }}" ]; then
+            IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.detect-changes.outputs.device-types }}"
+            
+            for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                
+                if [ "$FIRST" = false ]; then
+                  MATRIX="${MATRIX},"
+                fi
+                FIRST=false
+                
+                if [ "$ARCH" = "arm64" ]; then
+                  RUNNER="ubuntu-24.04-arm"
+                else
+                  RUNNER="ubuntu-latest"
+                fi
+                
+                MATRIX="${MATRIX}{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"type\":\"$DEVICE_TYPE\",\"category\":\"device\"}"
+              done
             done
-          done
+          fi
+          
+          # Add app types to matrix
+          if [ -n "${{ needs.detect-changes.outputs.app-types }}" ]; then
+            IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
+            
+            for APP_TYPE in "${APP_ARRAY[@]}"; do
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                
+                if [ "$FIRST" = false ]; then
+                  MATRIX="${MATRIX},"
+                fi
+                FIRST=false
+                
+                if [ "$ARCH" = "arm64" ]; then
+                  RUNNER="ubuntu-24.04-arm"
+                else
+                  RUNNER="ubuntu-latest"
+                fi
+                
+                MATRIX="${MATRIX}{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"type\":\"$APP_TYPE\",\"category\":\"app\"}"
+              done
+            done
+          fi
+          
           MATRIX="${MATRIX}]}"
           
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX"
 
-  # Matrix job: Build the bootc images for each platform and device type
+  # Matrix job: Build the bootc images for each platform and type
   build-image:
     name: Build BootC image
     needs: setup
@@ -234,30 +374,36 @@ jobs:
       image: ${{ steps.build.outputs.image }}
       tags: ${{ steps.build.outputs.tags }}
     env:
-      IMAGE_NAME: device-example-${{ matrix.device-type }}
+      IMAGE_NAME: ${{ matrix.category == 'device' && format('device-example-{0}', matrix.type) || format('apps-example-{0}', matrix.type) }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get version for this device type
+      - name: Get version for this type
         id: version
         run: |
-          # Extract version from the versions JSON
-          VERSIONS='${{ needs.setup.outputs.versions }}'
-          VERSION=$(echo "$VERSIONS" | jq -r '."${{ matrix.device-type }}"')
+          # Extract version from the appropriate versions JSON
+          if [ "${{ matrix.category }}" = "device" ]; then
+            VERSIONS='${{ needs.setup.outputs.device-versions }}'
+          else
+            VERSIONS='${{ needs.setup.outputs.app-versions }}'
+          fi
+          VERSION=$(echo "$VERSIONS" | jq -r '."${{ matrix.type }}"')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version for ${{ matrix.device-type }}: $VERSION"
+          echo "Version for ${{ matrix.category }} ${{ matrix.type }}: $VERSION"
 
       - name: Verify Containerfile exists
         run: |
           CONTAINERFILE_PATH=""
-          if [ -f "devices/${{ matrix.device-type }}/Containerfile" ]; then
-            CONTAINERFILE_PATH="devices/${{ matrix.device-type }}/Containerfile"
-          elif [ -f "devices/${{ matrix.device-type }}/containerfile" ]; then
-            CONTAINERFILE_PATH="devices/${{ matrix.device-type }}/containerfile"
+          BASE_DIR="${{ matrix.category == 'device' && 'devices' || 'apps' }}"
+          
+          if [ -f "${BASE_DIR}/${{ matrix.type }}/Containerfile" ]; then
+            CONTAINERFILE_PATH="${BASE_DIR}/${{ matrix.type }}/Containerfile"
+          elif [ -f "${BASE_DIR}/${{ matrix.type }}/containerfile" ]; then
+            CONTAINERFILE_PATH="${BASE_DIR}/${{ matrix.type }}/containerfile"
           else
-            echo "Error: No Containerfile found in devices/${{ matrix.device-type }}"
+            echo "Error: No Containerfile found in ${BASE_DIR}/${{ matrix.type }}"
             exit 1
           fi
           echo "CONTAINERFILE_PATH=$CONTAINERFILE_PATH" >> $GITHUB_ENV
@@ -301,7 +447,7 @@ jobs:
             ${{ steps.version.outputs.version }}-${{ matrix.arch }}
             ${{ steps.arch-tag.outputs.arch-tag }}
           platforms: ${{ matrix.platform }}
-          context: devices/${{ matrix.device-type }}
+          context: ${{ matrix.category == 'device' && format('devices/{0}', matrix.type) || format('apps/{0}', matrix.type) }}
           containerfiles: |
             ${{ env.CONTAINERFILE_PATH }}
           extra-args: |
@@ -332,7 +478,7 @@ jobs:
           tags: ${{ steps.build.outputs.tags }}
           registry: ${{ env.REGISTRY }}
 
-  # Job: Create multi-platform manifest for each device type
+  # Job: Create multi-platform manifest for each type
   create-manifest:
     name: Create multi-platform manifests
     needs: [setup, build-image]
@@ -351,76 +497,153 @@ jobs:
         run: |
           set -euo pipefail
           
-          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
-          VERSIONS='${{ needs.setup.outputs.versions }}'
-          
-          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-            IMAGE_NAME="device-example-${DEVICE_TYPE}"
-            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
-            LATEST_MANIFEST="${IMAGE_BASE}:latest"
-            SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
+          # Process device types
+          if [ -n "${{ needs.setup.outputs.device-types }}" ]; then
+            IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
+            DEVICE_VERSIONS='${{ needs.setup.outputs.device-versions }}'
             
-            # Get version for this device type
-            VERSION=$(echo "$VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
-            VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
-            
-            echo "Creating multi-platform manifests for device type: $DEVICE_TYPE"
-            echo "Latest manifest: $LATEST_MANIFEST"
-            echo "SHA manifest: $SHA_MANIFEST"
-            echo "Version manifest: $VERSION_MANIFEST"
-            
-            # Remove existing manifests if they exist
-            podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
-            podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
-            podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
-            
-            # Create new manifests
-            podman manifest create "$LATEST_MANIFEST"
-            podman manifest create "$SHA_MANIFEST"
-            podman manifest create "$VERSION_MANIFEST"
-            
-            # Add platform-specific images to manifests
-            IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
-            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-              ARCH="${PLATFORM#linux/}"
-              PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
-              PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
-              PLATFORM_VERSION="${IMAGE_BASE}:${VERSION}-${ARCH}"
+            for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+              IMAGE_NAME="device-example-${DEVICE_TYPE}"
+              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+              LATEST_MANIFEST="${IMAGE_BASE}:latest"
+              SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
               
-              # Set architecture tag
-              if [ "$ARCH" = "amd64" ]; then
-                ARCH_TAG="x86"
-              elif [ "$ARCH" = "arm64" ]; then
-                ARCH_TAG="arm"
-              else
-                ARCH_TAG="$ARCH"
-              fi
+              # Get version for this device type
+              VERSION=$(echo "$DEVICE_VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
+              VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
               
-              echo "Processing platform: $PLATFORM (arch: $ARCH, tag: $ARCH_TAG) for device: $DEVICE_TYPE"
-              echo "  Adding $PLATFORM_LATEST to latest manifest"
-              echo "  Adding $PLATFORM_SHA to SHA manifest"
-              echo "  Adding $PLATFORM_VERSION to version manifest"
-              echo "  Architecture tag: ${IMAGE_BASE}:${ARCH_TAG}"
+              echo "Creating multi-platform manifests for device type: $DEVICE_TYPE"
+              echo "Latest manifest: $LATEST_MANIFEST"
+              echo "SHA manifest: $SHA_MANIFEST"
+              echo "Version manifest: $VERSION_MANIFEST"
               
-              # Add to manifests with proper architecture specification
-              podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
-              podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
-              podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://$PLATFORM_VERSION"
+              # Remove existing manifests if they exist
+              podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
+              podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
+              podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
+              
+              # Create new manifests
+              podman manifest create "$LATEST_MANIFEST"
+              podman manifest create "$SHA_MANIFEST"
+              podman manifest create "$VERSION_MANIFEST"
+              
+              # Add platform-specific images to manifests
+              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
+                PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+                PLATFORM_VERSION="${IMAGE_BASE}:${VERSION}-${ARCH}"
+                
+                # Set architecture tag
+                if [ "$ARCH" = "amd64" ]; then
+                  ARCH_TAG="x86"
+                elif [ "$ARCH" = "arm64" ]; then
+                  ARCH_TAG="arm"
+                else
+                  ARCH_TAG="$ARCH"
+                fi
+                
+                echo "Processing platform: $PLATFORM (arch: $ARCH, tag: $ARCH_TAG) for device: $DEVICE_TYPE"
+                echo "  Adding $PLATFORM_LATEST to latest manifest"
+                echo "  Adding $PLATFORM_SHA to SHA manifest"
+                echo "  Adding $PLATFORM_VERSION to version manifest"
+                echo "  Architecture tag: ${IMAGE_BASE}:${ARCH_TAG}"
+                
+                # Add to manifests with proper architecture specification
+                podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
+                podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
+                podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://$PLATFORM_VERSION"
+              done
+              
+              echo "Inspecting created manifests for device $DEVICE_TYPE..."
+              podman manifest inspect "$LATEST_MANIFEST"
+              podman manifest inspect "$SHA_MANIFEST"
+              podman manifest inspect "$VERSION_MANIFEST"
+              
+              echo "Pushing multi-platform manifests for device $DEVICE_TYPE..."
+              podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
+              podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
+              podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
+              
+              echo "Multi-platform manifests for device $DEVICE_TYPE created and pushed successfully!"
+              echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
             done
+          fi
+          
+          # Process app types
+          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
+            IFS=',' read -ra APP_ARRAY <<< "${{ needs.setup.outputs.app-types }}"
+            APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
             
-            echo "Inspecting created manifests for $DEVICE_TYPE..."
-            podman manifest inspect "$LATEST_MANIFEST"
-            podman manifest inspect "$SHA_MANIFEST"
-            podman manifest inspect "$VERSION_MANIFEST"
-            
-            echo "Pushing multi-platform manifests for $DEVICE_TYPE..."
-            podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
-            podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
-            podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
-            
-            echo "Multi-platform manifests for $DEVICE_TYPE created and pushed successfully!"
-            echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
-          done
+            for APP_TYPE in "${APP_ARRAY[@]}"; do
+              IMAGE_NAME="apps-example-${APP_TYPE}"
+              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+              LATEST_MANIFEST="${IMAGE_BASE}:latest"
+              SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
+              
+              # Get version for this app type
+              VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
+              VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
+              
+              echo "Creating multi-platform manifests for app type: $APP_TYPE"
+              echo "Latest manifest: $LATEST_MANIFEST"
+              echo "SHA manifest: $SHA_MANIFEST"
+              echo "Version manifest: $VERSION_MANIFEST"
+              
+              # Remove existing manifests if they exist
+              podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
+              podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
+              podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
+              
+              # Create new manifests
+              podman manifest create "$LATEST_MANIFEST"
+              podman manifest create "$SHA_MANIFEST"
+              podman manifest create "$VERSION_MANIFEST"
+              
+              # Add platform-specific images to manifests
+              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
+                PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+                PLATFORM_VERSION="${IMAGE_BASE}:${VERSION}-${ARCH}"
+                
+                # Set architecture tag
+                if [ "$ARCH" = "amd64" ]; then
+                  ARCH_TAG="x86"
+                elif [ "$ARCH" = "arm64" ]; then
+                  ARCH_TAG="arm"
+                else
+                  ARCH_TAG="$ARCH"
+                fi
+                
+                echo "Processing platform: $PLATFORM (arch: $ARCH, tag: $ARCH_TAG) for app: $APP_TYPE"
+                echo "  Adding $PLATFORM_LATEST to latest manifest"
+                echo "  Adding $PLATFORM_SHA to SHA manifest"
+                echo "  Adding $PLATFORM_VERSION to version manifest"
+                echo "  Architecture tag: ${IMAGE_BASE}:${ARCH_TAG}"
+                
+                # Add to manifests with proper architecture specification
+                podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
+                podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
+                podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://$PLATFORM_VERSION"
+              done
+              
+              echo "Inspecting created manifests for app $APP_TYPE..."
+              podman manifest inspect "$LATEST_MANIFEST"
+              podman manifest inspect "$SHA_MANIFEST"
+              podman manifest inspect "$VERSION_MANIFEST"
+              
+              echo "Pushing multi-platform manifests for app $APP_TYPE..."
+              podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
+              podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
+              podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
+              
+              echo "Multi-platform manifests for app $APP_TYPE created and pushed successfully!"
+              echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
+            done
+          fi
 
   # Summary job
   summary:
@@ -435,42 +658,85 @@ jobs:
         if: needs.detect-changes.outputs.has-changes == 'true'
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "### Device Types Built" >> $GITHUB_STEP_SUMMARY
-          echo "- Device Types: ${{ needs.setup.outputs.device-types }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Types Built" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ needs.setup.outputs.device-types }}" ]; then
+            echo "- Device Types: ${{ needs.setup.outputs.device-types }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
+            echo "- App Types: ${{ needs.setup.outputs.app-types }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- Platforms: ${{ needs.setup.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           echo "### Multi-platform Images" >> $GITHUB_STEP_SUMMARY
-          IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
-          VERSIONS='${{ needs.setup.outputs.versions }}'
           
-          for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
-            VERSION=$(echo "$VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
-            echo "#### Device Type: $DEVICE_TYPE" >> $GITHUB_STEP_SUMMARY
-            echo "- Latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "- SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-            echo "- Version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+          # Device types summary
+          if [ -n "${{ needs.setup.outputs.device-types }}" ]; then
+            IFS=',' read -ra DEVICE_ARRAY <<< "${{ needs.setup.outputs.device-types }}"
+            DEVICE_VERSIONS='${{ needs.setup.outputs.device-versions }}'
             
-            echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
-            IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
-            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-              ARCH="${PLATFORM#linux/}"
-              # Set architecture tag
-              if [ "$ARCH" = "amd64" ]; then
-                ARCH_TAG="x86"
-              elif [ "$ARCH" = "arm64" ]; then
-                ARCH_TAG="arm"
-              else
-                ARCH_TAG="$ARCH"
-              fi
-              echo "- $ARCH latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
-              echo "- $ARCH SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-              echo "- $ARCH version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-              echo "- $ARCH specific: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+            for DEVICE_TYPE in "${DEVICE_ARRAY[@]}"; do
+              VERSION=$(echo "$DEVICE_VERSIONS" | jq -r ".\"${DEVICE_TYPE}\"")
+              echo "#### Device Type: $DEVICE_TYPE" >> $GITHUB_STEP_SUMMARY
+              echo "- Latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+              echo "- SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              echo "- Version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              
+              echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
+              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                # Set architecture tag
+                if [ "$ARCH" = "amd64" ]; then
+                  ARCH_TAG="x86"
+                elif [ "$ARCH" = "arm64" ]; then
+                  ARCH_TAG="arm"
+                else
+                  ARCH_TAG="$ARCH"
+                fi
+                echo "- $ARCH latest: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH SHA: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH version: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH specific: ${{ env.REGISTRY }}/device-example-${DEVICE_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+              done
+              echo "" >> $GITHUB_STEP_SUMMARY
             done
-            echo "" >> $GITHUB_STEP_SUMMARY
-          done
+          fi
+          
+          # App types summary
+          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
+            IFS=',' read -ra APP_ARRAY <<< "${{ needs.setup.outputs.app-types }}"
+            APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
+            
+            for APP_TYPE in "${APP_ARRAY[@]}"; do
+              VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
+              echo "#### App Type: $APP_TYPE" >> $GITHUB_STEP_SUMMARY
+              echo "- Latest: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+              echo "- SHA: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              echo "- Version: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              
+              echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
+              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                # Set architecture tag
+                if [ "$ARCH" = "amd64" ]; then
+                  ARCH_TAG="x86"
+                elif [ "$ARCH" = "arm64" ]; then
+                  ARCH_TAG="arm"
+                else
+                  ARCH_TAG="$ARCH"
+                fi
+                echo "- $ARCH latest: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH SHA: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH version: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH specific: ${{ env.REGISTRY }}/apps-example-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+              done
+              echo "" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
           
           echo "### Build Status" >> $GITHUB_STEP_SUMMARY
           echo "- Change Detection: ${{ needs.detect-changes.result }}" >> $GITHUB_STEP_SUMMARY
@@ -483,9 +749,11 @@ jobs:
         if: needs.detect-changes.outputs.has-changes == 'false'
         run: |
           echo "## No Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "No changes were detected in any device type directories under \`devices/\`." >> $GITHUB_STEP_SUMMARY
+          echo "No changes were detected in any device type directories under \`devices/\` or app type directories under \`apps/\`." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Available Device Types" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Types" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Device Types:**" >> $GITHUB_STEP_SUMMARY
           if [ -d "devices" ]; then
             for dir in devices/*/; do
               if [ -d "$dir" ]; then
@@ -497,9 +765,23 @@ jobs:
             echo "No devices directory found." >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**App Types:**" >> $GITHUB_STEP_SUMMARY
+          if [ -d "apps" ]; then
+            for dir in apps/*/; do
+              if [ -d "$dir" ]; then
+                app_name=$(basename "$dir")
+                echo "- \`$app_name\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "No apps directory found." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "**To trigger a build:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Make changes to files in any \`devices/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
-          echo "- Run workflow manually and specify device types to build" >> $GITHUB_STEP_SUMMARY
+          echo "- Make changes to files in any \`devices/{type}/\` or \`apps/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
+          echo "- Run workflow manually and specify device types and/or app types to build" >> $GITHUB_STEP_SUMMARY
 
       - name: Checkout for no-changes summary
         if: needs.detect-changes.outputs.has-changes == 'false'
