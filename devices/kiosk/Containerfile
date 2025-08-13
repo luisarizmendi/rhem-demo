@@ -55,6 +55,10 @@ COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/
 COPY files/user-templates-standard /etc/accountsservice/user-templates/standard/
 COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 
+## DEMO: UPDATE IMAGE
+#COPY files/gdm-custom.conf.v2    /etc/gdm/custom.conf
+
+
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
 
