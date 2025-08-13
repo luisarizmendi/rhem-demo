@@ -54,13 +54,15 @@ COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
 
-RUN systemctl set-default graphical.target &&  systemctl enable cockpit.socket
+RUN systemctl set-default graphical.target
 
 #////////////////////////////////////////
 #DEMO V2 update (cockpit + kvm + firewall)
 #////////////////////////////////////////
 RUN dnf install -y shadow-utils cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
     && dnf clean all
+
+RUN systemctl enable cockpit.socket
 #////////////////////////////////////////
 
 
