@@ -49,9 +49,9 @@ RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
 
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates/standard /etc/gdm/
 
-COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/ && \
-     files/user-templates-standard /etc/accountsservice/user-templates/standard && \
-     files/gdm-custom.conf    /etc/gdm/custom.conf
+COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/
+COPY files/user-templates-standard /etc/accountsservice/user-templates/standard
+COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
