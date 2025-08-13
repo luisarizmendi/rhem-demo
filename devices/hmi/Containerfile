@@ -40,6 +40,8 @@ ADD config.yaml /etc/flightctl/
 # Customization
 ################################################################################
 
+RUN useradd -m -d /var/home/kiosk kiosk 
+
 RUN dnf install -y firewalld shadow-utils gnome-kiosk gdm gnome-kiosk-script-session cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top git firefox \
     && dnf clean all
 
@@ -50,7 +52,7 @@ RUN firewall-offline-cmd  --zone=public --add-port=22/tcp && \
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates/standard /etc/gdm/
 
 COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/
-COPY files/user-templates-standard /etc/accountsservice/user-templates/standard
+COPY files/user-templates-standard /etc/accountsservice/user-templates/standard/
 COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
