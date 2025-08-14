@@ -46,10 +46,10 @@ RUN dnf install -y shadow-utils libvirt-daemon-config-network libvirt-daemon-kvm
 #////////////////////////////////////////
 #DEMO V2 update (cockpit )
 #////////////////////////////////////////
-#RUN dnf install -y  cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording \
-#    && dnf clean all
+RUN dnf install -y  cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording \
+    && dnf clean all
 
-#RUN systemctl enable cockpit.socket
+RUN systemctl enable cockpit.socket
 #////////////////////////////////////////
 
 
