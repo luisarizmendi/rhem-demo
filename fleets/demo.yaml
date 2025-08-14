@@ -33,13 +33,13 @@ spec:
           path: /configs/site/{{ .metadata.labels.site }}
           repository: rhem-demo
           targetRevision: main
-        name: site-config
+        name: site-conf
       - gitRef:
           mountPath: /
           path: /configs/function/{{ .metadata.labels.function }}
           repository: rhem-demo
           targetRevision: main
-        name: function-config
+        name: function-conf
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
