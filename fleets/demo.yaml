@@ -3,7 +3,6 @@ kind: Fleet
 metadata:
   labels: {}
   name: demo
-  resourceVersion: "4"
 spec:
   selector:
     matchLabels:
