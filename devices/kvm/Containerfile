@@ -39,17 +39,19 @@ ADD config.yaml /etc/flightctl/
 # Customization
 ################################################################################
 
-RUN dnf install -y shadow-utils libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
+RUN dnf install -y shadow-utils libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img libvirt virt-install virt-viewer libguestfs-tools python3-libguestfs virt-top  \
     && dnf clean all
+
+RUN for drv in qemu network nodedev nwfilter secret storage interface; do systemctl start virt${drv}d{,-ro,-admin}.socket; done
 
 
 #////////////////////////////////////////
 #DEMO V2 update (cockpit )
 #////////////////////////////////////////
-RUN dnf install -y  cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording \
-    && dnf clean all
-
-RUN systemctl enable cockpit.socket
+#RUN dnf install -y  cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording \
+#    && dnf clean all
+#
+#RUN systemctl enable cockpit.socket
 #////////////////////////////////////////
 
 
