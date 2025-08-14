@@ -58,7 +58,7 @@ RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
 COPY files/bin-monitor-service /etc/systemd/system/bin-monitor.service
 
 
-RUN systemctl set-default graphical.target && systemctl enable --now bin-monitor.service
+RUN systemctl set-default graphical.target && systemctl enable bin-monitor.service
 
 #////////////////////////////////////////
 #DEMO V2 update (cockpit + kvm + firewall)
