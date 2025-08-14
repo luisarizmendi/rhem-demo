@@ -42,7 +42,7 @@ ADD config.yaml /etc/flightctl/
 
 RUN useradd -m -d /var/home/kiosk kiosk 
 
-RUN dnf install -y shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git firefox \
+RUN dnf install -y inotify-tools shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git firefox \
     && dnf clean all
 
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /etc/gdm/
@@ -52,14 +52,13 @@ COPY files/user-templates-standard /etc/accountsservice/user-templates/standard
 COPY files/gdm-custom.conf    /etc/gdm/custom.conf
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
-    chown -R kiosk:kiosk /var/home/kiosk && \
-    chmod 2775 /var/home/kiosk/.local/bin && \
-    setfacl -d -m u::rwx /var/home/kiosk/.local/bin && \
-    setfacl -d -m g::rwx /var/home/kiosk/.local/bin && \
-    setfacl -d -m o::rx  /var/home/kiosk/.local/bin
+    chown -R kiosk:kiosk /var/home/kiosk 
 
 
-RUN systemctl set-default graphical.target
+COPY files/bin-monitor-service /etc/systemd/system/bin-monitor.service
+
+
+RUN systemctl set-default graphical.target && systemctl enable --now bin-monitor.service
 
 #////////////////////////////////////////
 #DEMO V2 update (cockpit + kvm + firewall)
