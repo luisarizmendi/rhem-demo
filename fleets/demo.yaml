@@ -44,7 +44,7 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: ghcr.io/luisarizmendi/device-demo-kiosk:v4
+        image: ghcr.io/luisarizmendi/device-demo-kiosk:v2
 
 
 
