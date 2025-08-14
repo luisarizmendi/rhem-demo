@@ -43,7 +43,7 @@ ADD config.yaml /etc/flightctl/
 RUN dnf install -y shadow-utils libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img libvirt virt-install virt-viewer libguestfs-tools python3-libguestfs virt-top  \
     && dnf clean all
 
-RUN for drv in qemu network nodedev nwfilter secret storage interface; do systemctl start virt${drv}d{,-ro,-admin}.socket; done
+RUN for drv in qemu network nodedev nwfilter secret storage interface; do systemctl enable virt${drv}d{,-ro,-admin}.socket; done
 
 
 #////////////////////////////////////////

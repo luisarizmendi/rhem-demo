@@ -67,6 +67,7 @@ RUN systemctl set-default graphical.target
 
 
 
+
 ################################################################################
 ########## REMOVE IF YOU USE A SUBSCRIBED HOST FOR BUILDING THE IMAGE ##########
 # Clean-up and unregistering
