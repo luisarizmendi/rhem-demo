@@ -81,22 +81,50 @@ jobs:
             echo "$CHANGED_FILES"
             
             # Extract unique device types from changed files in devices/ directory
+            # Only include types that currently exist in the repository
             if echo "$CHANGED_FILES" | grep -q '^devices/[^/]\+/'; then
-              DEVICE_TYPES=$(echo "$CHANGED_FILES" | grep -E '^devices/[^/]+/' | sed 's|^devices/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+              POTENTIAL_DEVICE_TYPES=$(echo "$CHANGED_FILES" | grep -E '^devices/[^/]+/' | sed 's|^devices/\([^/]*\)/.*|\1|' | sort -u)
+              DEVICE_TYPES=""
+              for TYPE in $POTENTIAL_DEVICE_TYPES; do
+                if [ -d "devices/$TYPE" ] && ([ -f "devices/$TYPE/Containerfile" ] || [ -f "devices/$TYPE/containerfile" ]); then
+                  if [ -z "$DEVICE_TYPES" ]; then
+                    DEVICE_TYPES="$TYPE"
+                  else
+                    DEVICE_TYPES="$DEVICE_TYPES,$TYPE"
+                  fi
+                  echo "Including existing device type: $TYPE"
+                else
+                  echo "Skipping deleted/invalid device type: $TYPE"
+                fi
+              done
             else
               DEVICE_TYPES=""
             fi
             
             # Extract unique app types from changed files in apps/ directory
+            # Only include types that currently exist in the repository
             if echo "$CHANGED_FILES" | grep -q '^apps/[^/]\+/'; then
-              APP_TYPES=$(echo "$CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+              POTENTIAL_APP_TYPES=$(echo "$CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u)
+              APP_TYPES=""
+              for TYPE in $POTENTIAL_APP_TYPES; do
+                if [ -d "apps/$TYPE" ] && ([ -f "apps/$TYPE/Containerfile" ] || [ -f "apps/$TYPE/containerfile" ]); then
+                  if [ -z "$APP_TYPES" ]; then
+                    APP_TYPES="$TYPE"
+                  else
+                    APP_TYPES="$APP_TYPES,$TYPE"
+                  fi
+                  echo "Including existing app type: $TYPE"
+                else
+                  echo "Skipping deleted/invalid app type: $TYPE"
+                fi
+              done
             else
               APP_TYPES=""
             fi
           fi
           
           if [ -z "$DEVICE_TYPES" ] && [ -z "$APP_TYPES" ]; then
-            echo "No device or app type changes detected"
+            echo "No device or app type changes detected (or all changes were deletions)"
             echo "has-changes=false" >> $GITHUB_OUTPUT
             echo "device-types=" >> $GITHUB_OUTPUT
             echo "app-types=" >> $GITHUB_OUTPUT
@@ -112,7 +140,7 @@ jobs:
       - name: Validate types
         run: |
           if [ "${{ steps.changes.outputs.has-changes }}" = "true" ]; then
-            # Validate device types
+            # Validate device types (should all exist now since we filtered above)
             if [ -n "${{ steps.changes.outputs.device-types }}" ]; then
               IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.device-types }}"
               for TYPE in "${TYPES[@]}"; do
@@ -128,7 +156,7 @@ jobs:
               echo "All device types validated successfully"
             fi
             
-            # Validate app types
+            # Validate app types (should all exist now since we filtered above)
             if [ -n "${{ steps.changes.outputs.app-types }}" ]; then
               IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.app-types }}"
               for TYPE in "${TYPES[@]}"; do
