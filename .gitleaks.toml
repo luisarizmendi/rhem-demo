@@ -1,5 +1,5 @@
 [allowlist]
-  description = "Ignore config.yaml in devices"
+  description = "Ignore config.yaml in devices. Only contains demo certs"
   paths = [
     "devices/**/config.yaml"
   ]
