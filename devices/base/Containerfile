@@ -35,10 +35,18 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
 ADD config.yaml /etc/flightctl/
 
 
+################################################################################
+# Customization
+################################################################################
+
+RUN dnf install -y shadow-utils libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
+    && dnf clean all
+
+
 #////////////////////////////////////////
-#DEMO V2 update (cockpit + kvm + firewall)
+#DEMO V2 update (cockpit )
 #////////////////////////////////////////
-#RUN dnf install -y shadow-utils cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img virt-install libguestfs-tools python3-libguestfs virt-top  \
+#RUN dnf install -y  cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording \
 #    && dnf clean all
 
 #RUN systemctl enable cockpit.socket
