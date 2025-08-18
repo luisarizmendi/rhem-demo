@@ -1,6 +1,6 @@
 # Red Hat Edge Manager Demo
 
-A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for managing edge devices at scale. RHEM is product based on upstream [FlightCtl project](https://github.com/flightctl/flightctl).
+A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for managing edge devices at scale. RHEM is product based on upstream [Flight Control project](https://github.com/flightctl/flightctl).
 
 ## What You'll Learn
 
@@ -39,6 +39,8 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 4. **Prepare Demo Environment** - See [Demo Preparation](docs/03-demo-preparation.md)
 
 5. **Run the Demo** - Follow [Demo Script](docs/04-demo-script.md)
+
+6. **RHEM Value** - Follow [Demo Script](docs/05-value-propotitions.md)
 
 ## Demo Sections
 
