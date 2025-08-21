@@ -48,3 +48,4 @@ RUN systemctl set-default graphical.target
 #
 #RUN systemctl enable cockpit.socket
 #////////////////////////////////////////
+
