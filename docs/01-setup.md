@@ -23,20 +23,53 @@ cd rhem-demo
 
 ### 2. Enable GitHub Actions Permissions
 
-Navigate to **Repository Settings** → **Actions** → **General**:
+To allow the workflow to read repository contents and push packages:
 
-1. Under **Workflow permissions**, select:
+1. Go to **Repository Settings** → **Actions** → **General**.
+2. Scroll to **Workflow permissions**.
+3. Select:
    - ✅ **Read repository contents and packages permissions**
-2. Click **Save**
+4. Click **Save**.
 
-### 3. Configure Red Hat Registry Credentials
+### 3. Configure Red Hat Credentials
 
-Add your Red Hat credentials as repository secrets:
+The workflow supports two authentication methods with Red Hat:
 
-1. Go to **Repository Settings** → **Secrets and variables** → **Actions**
-2. Add these **Repository secrets**:
-   - `RH_USERNAME`: Your Red Hat registry username
-   - `RH_PASSWORD`: Your Red Hat registry password
+#### Option 1: Username/Password (Default)
+1. Go to **Repository Settings** → **Secrets and variables** → **Actions**.
+2. Add the following **Repository secrets**:
+   - `RH_USERNAME`: Your Red Hat username
+   - `RH_PASSWORD`: Your Red Hat password
+
+#### Option 2: Organization ID/Activation Key (Optional)
+If you prefer to use activation keys:
+1. Add these **Repository secrets** instead:
+   - `RHT_ORGID`: Your Red Hat organization ID
+   - `RHT_ACT_KEY`: Your Red Hat activation key
+
+The workflow will automatically detect which method to use based on available secrets.
+
+### 4. (Optional) Configure Custom Registry Settings
+
+By default, images are pushed to GitHub Container Registry (GHCR). To use a different registry:
+
+1. Go to **Repository Settings** → **Secrets and variables** → **Actions**.
+2. Under **Variables**, add any of:
+   - `DEST_REGISTRY_HOST`: Custom registry hostname (default: `ghcr.io`)
+   - `DEST_REGISTRY_USER`: Custom registry username (default: `github.actor`)
+   - `DEST_IMAGE`: Custom image name (default: `{owner}/bootc-example`)
+   - `TAGLIST`: Custom tags (default: `latest {sha} {branch}`)
+3. Under **Secrets**, add:
+   - `DEST_REGISTRY_PASSWORD`: Custom registry password (default: `GITHUB_TOKEN`)
+
+### 5. (Optional) Override Source Registry Credentials
+
+If you need different credentials for pulling from registry.redhat.io:
+
+1. Add these **Repository secrets**:
+   - `SOURCE_REGISTRY_USER`: Registry username (defaults to `RH_USERNAME`)
+   - `SOURCE_REGISTRY_PASSWORD`: Registry password (defaults to `RH_PASSWORD`)
+
 
 
 ## Local Environment Setup
