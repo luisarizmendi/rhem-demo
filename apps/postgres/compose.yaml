@@ -10,10 +10,10 @@ services:
     restart: always
 
   pgadmin:
-#    image: docker.io/dpage/pgadmin4:9.5
+    image: docker.io/dpage/pgadmin4:9.5
 #////////////////////////////////////////
 #DEMO V2 update (new image version) -> comment out version 9.5
-    image: docker.io/dpage/pgadmin4:9.6
+#    image: docker.io/dpage/pgadmin4:9.6
 #////////////////////////////////////////
 
     environment:
