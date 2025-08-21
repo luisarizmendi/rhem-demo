@@ -402,9 +402,32 @@ jobs:
     env:
       IMAGE_NAME: ${{ matrix.category == 'device' && format('device-demo-{0}', matrix.type) || format('app-demo-{0}', matrix.type) }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
+      # Disable Subscription Manager container passthrough
+      SMDEV_CONTAINER_OFF: 1
+      # Source registry for base image
+      SOURCE_REGISTRY_HOST: "registry.redhat.io"
+    container:
+      image: registry.access.redhat.com/ubi9/ubi
+      options: --privileged
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Get container tools in UBI builder
+        run: dnf -y install podman buildah skopeo
+
+      - name: Register with Red Hat subscription manager
+        run: |
+          if [ -n "${{ secrets.RHT_ORGID }}" ] && [ -n "${{ secrets.RHT_ACT_KEY }}" ]; then
+            echo "Registering with organization ID and activation key..."
+            subscription-manager register --org=${{ secrets.RHT_ORGID }} --activationkey=${{ secrets.RHT_ACT_KEY }}
+          else
+            echo "Registering with username and password..."
+            subscription-manager register --username=${{ secrets.RH_USERNAME }} --password=${{ secrets.RH_PASSWORD }}
+          fi
 
       - name: Get version for this type
         id: version
@@ -435,18 +458,21 @@ jobs:
           echo "CONTAINERFILE_PATH=$CONTAINERFILE_PATH" >> $GITHUB_ENV
           echo "Using Containerfile: $CONTAINERFILE_PATH"
 
+      # workaround for https://github.com/redhat-actions/podman-login/issues/42
+      - name: Workaround open podman-login action issue
+        env:
+          auth: "{ \"auths\": {} }"
+        run: |
+          mkdir -p $HOME/.docker
+          echo $auth > $HOME/.docker/config.json
+
       - name: Log in to Red Hat Registry
         uses: redhat-actions/podman-login@v1
         with:
-          registry: registry.redhat.io
-          username: ${{ secrets.RH_USERNAME }}
-          password: ${{ secrets.RH_PASSWORD }}
-
-      - name: Prepare Buildah secrets for container subscription
-        run: |
-          echo "${{ secrets.RH_USERNAME }}" > secret-username
-          echo "${{ secrets.RH_PASSWORD }}" > secret-password
-          chmod 600 secret-username secret-password
+          registry: ${{ env.SOURCE_REGISTRY_HOST }}
+          username: ${{ secrets.SOURCE_REGISTRY_USER || secrets.RH_USERNAME }}
+          password: ${{ secrets.SOURCE_REGISTRY_PASSWORD || secrets.RH_PASSWORD }}
+          auth_file_path: /run/containers/0/auth.json
 
       - name: Set architecture tag
         id: arch-tag
@@ -476,18 +502,6 @@ jobs:
           context: ${{ matrix.category == 'device' && format('devices/{0}', matrix.type) || format('apps/{0}', matrix.type) }}
           containerfiles: |
             ${{ env.CONTAINERFILE_PATH }}
-          extra-args: |
-            --secret id=username,src=secret-username
-            --secret id=password,src=secret-password
-            --pull=always
-
-      - name: Cleanup secret files
-        run: rm -f secret-username secret-password
-
-      - name: Setup empty Docker config
-        run: |
-          mkdir -p $HOME/.docker
-          echo '{ "auths": {} }' > $HOME/.docker/config.json
 
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
@@ -495,6 +509,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          auth_file_path: /run/containers/0/auth.json
 
       - name: Push platform-specific image to GHCR
         id: push
@@ -503,6 +518,10 @@ jobs:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
           registry: ${{ env.REGISTRY }}
+
+      - name: Clean up the subscription
+        if: always()
+        run: subscription-manager unregister
 
   # Job: Create multi-platform manifest for each type
   create-manifest:
