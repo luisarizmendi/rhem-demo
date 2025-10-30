@@ -13,6 +13,11 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 
 **Demo Duration:** ~50 minutes
 
+## Demo Architecture
+
+![demo arch](demo-arch.png)
+
+
 ## Repository Structure
 
 ```
