@@ -114,8 +114,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    - Open device in RHEM UI
    - Edit device configuration
    - Add file: `/etc/motd`
-   - Method: Git repository or inline
-   - Use: `configs/motd/generic/motd` file
+   - Method: Git repository ( Use: `/configs/function/generic` as source) or inline (use `/etc/motd` as file destination)
 
 3. **Wait for drift detection**:
    - **Wait time**: ~2:30 minutes
@@ -158,13 +157,13 @@ When to Use Runtime Configuration:
 2. **Deploy application (v1)**:
    - Open device in RHEM UI
    - Configure application:
-     - Image: `ghcr.io/your-username/app-demo-postgres:v1`
+     - Image: `ghcr.io/luisarizmendi/app-demo-postgres:v1`
      - Environment variables:
        ```
        POSTGRES_USER=postgres
        POSTGRES_PW=pgredhat
        POSTGRES_DB=postgres
-       PGADMIN_MAIL=pgadmin@none.com  
+       PGADMIN_MAIL=pgadmin@none.com
        PGADMIN_PW=pgredhat
        ```
 
@@ -220,7 +219,7 @@ When to Use Runtime Configuration:
 
 2. **Configure OS image in RHEM**:
    - Edit device in RHEM UI
-   - Set bootc image: `ghcr.io/your-username/device-demo-kvm:v2`
+   - Set bootc image: `ghcr.io/luisarizmendi/device-demo-kvm:v2`
    - Apply changes
 
 3. **Monitor upgrade process**:
@@ -311,7 +310,7 @@ When to Use Runtime Configuration:
    - When enrollment appears, assign labels:
      - `fleet=demo`
      - `site=na` or `site=emea`  
-     - `function=<directory name under configs/function>/kiosk-*`
+     - `function=<directory name under configs/function>`, for example `function=kiosk-energy`
    - Accept enrollment
 
 5. **Verify fleet management**:
