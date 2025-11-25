@@ -1,0 +1,1224 @@
+name: Build bootc images and installable artifacts per changed directory
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to build (comma-separated)'
+        required: true
+        default: 'linux/amd64,linux/arm64'
+      formats:
+        description: 'Export formats (comma-separated)'
+        required: true
+        default: 'anaconda-iso'
+      base_path:
+        description: 'Base path for image directories (e.g., "devices" or leave empty for root)'
+        required: false
+        default: ''
+      image_prefix:
+        description: 'Image name prefix (e.g., "bootc" for bootc-<imagename>)'
+        required: false
+        default: 'bootc'
+  push:
+    branches:
+      - main
+
+jobs:
+  # Setup job: Parse build parameters + detect changed directories
+  setup:
+    name: Setup build parameters
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.setup.outputs.platforms }}
+      formats: ${{ steps.setup.outputs.formats }}
+      base_path: ${{ steps.setup.outputs.base_path }}
+      matrix: ${{ steps.setup.outputs.matrix }}
+      image_prefix: ${{ steps.setup.outputs.image_prefix }}
+      artifact_matrix: ${{ steps.setup.outputs.artifact_matrix }}
+      dirs: ${{ steps.setup.outputs.dirs }}
+      has_dirs: ${{ steps.setup.outputs.has_dirs }}
+      has_artifacts: ${{ steps.setup.outputs.has_artifacts }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check available disk space
+        run: |
+          echo "=== Disk space ==="
+          df -h
+          echo ""
+
+      - name: Install skopeo for artifact detection
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Setup build parameters & detect changed directories
+        id: setup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Define blacklisted files (case-insensitive patterns)
+          # These files will not trigger a build when they are the only changes
+          BLACKLISTED_FILES=(
+            ".buildconfig"
+            "readme.md"
+          )
+
+          # Inputs or defaults
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PLATFORMS="${{ github.event.inputs.platforms }}"
+            FORMATS="${{ github.event.inputs.formats }}"
+            BASE_PATH="${{ github.event.inputs.base_path }}"
+            IMAGE_PREFIX="${{ github.event.inputs.image_prefix }}" 
+          else
+            PLATFORMS="linux/amd64,linux/arm64"
+            FORMATS="anaconda-iso"
+            BASE_PATH="${{ vars.BASE_PATH || '' }}"
+            IMAGE_PREFIX="${{ vars.IMAGE_PREFIX || 'bootc' }}"
+          fi
+
+          # Normalize base path (remove leading/trailing slashes)
+          if [ -n "$BASE_PATH" ]; then
+            BASE_PATH=$(echo "$BASE_PATH" | sed 's#^/*##' | sed 's#/*$##')
+            echo "Using base path: $BASE_PATH"
+          else
+            echo "Using root directory as base path"
+          fi
+
+          echo "base_path=$BASE_PATH" >> "$GITHUB_OUTPUT"
+          echo "image_prefix=$IMAGE_PREFIX" >> "$GITHUB_OUTPUT" 
+          echo "platforms=$PLATFORMS" >> "$GITHUB_OUTPUT"
+          echo "formats=$FORMATS" >> "$GITHUB_OUTPUT"
+
+          echo "Building for platforms: $PLATFORMS"
+          echo "Building formats: $FORMATS"
+          echo "Using image prefix: $IMAGE_PREFIX"  
+
+          # Function to check if a filename matches any blacklisted pattern (case-insensitive)
+          is_blacklisted() {
+            local filename="$1"
+            local basename_lower=$(basename "$filename" | tr '[:upper:]' '[:lower:]')
+            
+            for pattern in "${BLACKLISTED_FILES[@]}"; do
+              pattern_lower=$(echo "$pattern" | tr '[:upper:]' '[:lower:]')
+              if [ "$basename_lower" = "$pattern_lower" ]; then
+                return 0  # File is blacklisted
+              fi
+            done
+            return 1  # File is not blacklisted
+          }
+
+          # Function to get allowed platforms for a directory
+          get_allowed_platforms() {
+            local dir="$1"
+            local default_platforms="$2"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              # Parse .buildconfig file for platforms
+              local config_platforms=$(grep -E '^platforms\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^platforms\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ')
+              if [ -n "$config_platforms" ]; then
+                echo "$config_platforms"
+                return
+              fi
+            fi
+
+            # Return default platforms if no restriction found
+            echo "$default_platforms"
+          }
+
+          # Function to get keep_version setting for a directory
+          get_keep_version() {
+            local dir="$1"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              local keep_version=$(grep -E '^keep_version\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^keep_version\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+              if [ "$keep_version" = "true" ]; then
+                echo "true"
+                return
+              fi
+            fi
+
+            # Default to false
+            echo "false"
+          }
+
+          # Function to get artifact configuration for a directory
+          get_artifact_config() {
+            local dir="$1"
+            local default_formats="$2"
+            local dir_platforms="$3"
+
+            local create_artifacts=""
+            local artifact_formats=""
+
+            if [ -f "$dir/.buildconfig" ]; then
+              # Check if artifacts are explicitly enabled/disabled (default: auto)
+              create_artifacts=$(grep -E '^artifacts\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^artifacts\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' || echo "")
+
+              # Get artifact formats if specified
+              artifact_formats=$(grep -E '^artifact_formats\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^artifact_formats\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' || echo "")
+            fi
+
+            # Set default value for artifacts if not specified
+            if [ -z "$create_artifacts" ]; then
+              create_artifacts="auto"
+            fi
+
+            # Set default artifact formats if none specified but artifacts are enabled
+            if [ -z "$artifact_formats" ] && [ "$create_artifacts" != "false" ]; then
+              artifact_formats="$default_formats"
+            fi
+
+            # Use pipe as delimiter to avoid comma conflicts with format lists
+            echo "$create_artifacts|$artifact_formats|$dir_platforms"
+          }
+
+          # Function to check if artifacts exist for an image
+          check_existing_artifacts() {
+            local image_base="$1"
+            local artifact_formats="$2"
+            
+            # Check each artifact format separately
+            IFS=',' read -ra FORMAT_ARRAY <<< "$artifact_formats"
+            
+            for format in "${FORMAT_ARRAY[@]}"; do
+              local artifact_image_base="${image_base}-${format}"
+              local existing_tags=""
+              
+              if skopeo list-tags "docker://${artifact_image_base}" >/tmp/check_tags_${format}.json 2>/dev/null; then
+                existing_tags=$(jq -r '.Tags[]' /tmp/check_tags_${format}.json 2>/dev/null | \
+                  grep -E '^v[0-9]+(-[^-]+)?$' || echo "")
+                
+                if [ -n "$existing_tags" ]; then
+                  echo "true"
+                  return 0
+                fi
+              fi
+            done
+            
+            echo "false"
+          }
+
+          # Function to check if only blacklisted files changed in a directory
+          directory_has_substantial_changes() {
+            local dir="$1"
+            local before="$2"
+            local after="$3"
+            
+            # Get all changed files in this directory
+            if [ "$before" = "0000000000000000000000000000000000000000" ] || [ -z "$before" ]; then
+              # Initial commit - all files are new, so it's a substantial change
+              return 0
+            fi
+            
+            local dir_changes=$(git diff --name-only "$before" "$after" -- "$dir/" 2>/dev/null || echo "")
+            
+            if [ -z "$dir_changes" ]; then
+              # No changes in directory
+              return 1
+            fi
+            
+            # Check if any non-blacklisted file changed
+            local has_non_blacklisted=false
+            while IFS= read -r changed_file; do
+              if ! is_blacklisted "$changed_file"; then
+                has_non_blacklisted=true
+                break
+              fi
+            done <<< "$dir_changes"
+            
+            if [ "$has_non_blacklisted" = false ]; then
+              echo "Directory $dir: Only blacklisted files changed (${BLACKLISTED_FILES[*]}), skipping build"
+              return 1
+            fi
+            
+            # Substantial changes found
+            return 0
+          }
+
+          # Function to extract image name from full path
+          get_image_name() {
+            local full_path="$1"
+            # Get the last component of the path
+            echo "$(basename "$full_path")"
+          }
+
+          # Detect changed directories under the base path
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+            echo "Diff range: $BEFORE..$AFTER"
+            
+            # Handle the case where BEFORE is the null SHA (initial commit or empty repository)
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+              echo "Detected initial commit or empty before SHA, using git ls-tree to find all files"
+              # For initial commit, get all files in the current commit
+              CHANGED_FILES=$(git ls-tree -r --name-only "$AFTER" 2>/dev/null || echo "")
+            else
+              # Normal case: get changed files between commits
+              CHANGED_FILES=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || echo "")
+            fi
+            
+            echo "Changed files: $CHANGED_FILES"
+            
+            # Filter changed files to only those under BASE_PATH
+            if [ -n "$BASE_PATH" ]; then
+              echo "Filtering changes to base path: $BASE_PATH/"
+              FILTERED_FILES=$(echo "$CHANGED_FILES" | grep "^${BASE_PATH}/" || echo "")
+              echo "Filtered files: $FILTERED_FILES"
+            else
+              FILTERED_FILES="$CHANGED_FILES"
+            fi
+            
+            # Extract directories from the filtered files
+            if [ -n "$FILTERED_FILES" ]; then
+              if [ -n "$BASE_PATH" ]; then
+                # Extract first-level subdirectories under BASE_PATH
+                CHANGED_DIRS=$(echo "$FILTERED_FILES" | \
+                  grep "^${BASE_PATH}/[^/]\+/" | \
+                  sed "s#^${BASE_PATH}/\([^/]\+\)/.*#${BASE_PATH}/\1#" | \
+                  sort -u || echo "")
+              else
+                # Extract top-level directories from root
+                CHANGED_DIRS=$(echo "$FILTERED_FILES" | grep -E '^[^/]+/' | cut -d'/' -f1 | sort -u || echo "")
+              fi
+            else
+              CHANGED_DIRS=""
+            fi
+          else
+            # For manual runs, find all directories with a Containerfile under BASE_PATH
+            if [ -n "$BASE_PATH" ]; then
+              if [ -d "$BASE_PATH" ]; then
+                CHANGED_DIRS=$(find "$BASE_PATH" -mindepth 1 -maxdepth 1 -type d | sort)
+              else
+                echo "Base path $BASE_PATH does not exist"
+                CHANGED_DIRS=""
+              fi
+            else
+              CHANGED_DIRS=$(find . -maxdepth 1 -type d ! -path . ! -path './.*' | sed 's#^\./##' | sort)
+            fi
+          fi
+
+          echo "Changed directories (raw): $CHANGED_DIRS"
+
+          # Keep only those that currently exist AND contain a Containerfile AND have substantial changes
+          BUILD_DIRS=()
+          BUILD_IMAGE_NAMES=()
+          for d in $CHANGED_DIRS; do
+            if [ -f "$d/Containerfile" ]; then
+              # For push events, check if only blacklisted files changed
+              if [ "${{ github.event_name }}" = "push" ]; then
+                if directory_has_substantial_changes "$d" "$BEFORE" "$AFTER"; then
+                  BUILD_DIRS+=("$d")
+                  IMAGE_NAME=$(get_image_name "$d")
+                  BUILD_IMAGE_NAMES+=("$IMAGE_NAME")
+                  echo "Will build: $d (image name: $IMAGE_NAME)"
+                else
+                  echo "Skipping $d (only blacklisted files changed)"
+                fi
+              else
+                # For manual runs, always include
+                BUILD_DIRS+=("$d")
+                IMAGE_NAME=$(get_image_name "$d")
+                BUILD_IMAGE_NAMES+=("$IMAGE_NAME")
+                echo "Will build: $d (image name: $IMAGE_NAME)"
+              fi
+            else
+              echo "Skipping $d (no Containerfile or directory deleted)"
+            fi
+          done
+
+          echo "Final build directories: ${BUILD_DIRS[*]}"
+          echo "Final image names: ${BUILD_IMAGE_NAMES[*]}"
+
+          # Set outputs based on whether we have directories to build
+          if [ ${#BUILD_DIRS[@]} -eq 0 ]; then
+            echo "No buildable directories detected. The workflow will skip build & manifest steps."
+            echo 'has_dirs=false' >> "$GITHUB_OUTPUT"
+            echo 'has_artifacts=false' >> "$GITHUB_OUTPUT"
+            echo 'dirs=[]' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'artifact_matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'has_dirs=true' >> "$GITHUB_OUTPUT"
+            # JSON array of directories for later jobs
+            printf 'dirs=[' >> "$GITHUB_OUTPUT"
+            for i in "${!BUILD_DIRS[@]}"; do
+              [ $i -gt 0 ] && printf ',' >> "$GITHUB_OUTPUT"
+              printf '"%s"' "${BUILD_DIRS[$i]}" >> "$GITHUB_OUTPUT"
+            done
+            printf ']\n' >> "$GITHUB_OUTPUT"
+
+            # Build the cross-product matrix (platform × directory) with architecture restrictions
+            MATRIX='{"include":['
+            ARTIFACT_MATRIX='{"include":['
+            IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+            IFS=',' read -ra FORMAT_ARRAY <<< "$FORMATS"
+
+            first=1
+            artifact_first=1
+            has_any_artifacts=false
+
+            for idx in "${!BUILD_DIRS[@]}"; do
+              DIR="${BUILD_DIRS[$idx]}"
+              IMAGE_NAME="${BUILD_IMAGE_NAMES[$idx]}"
+              [ -z "$DIR" ] && continue
+
+              # Get allowed platforms for this directory (same for both images and artifacts)
+              ALLOWED_PLATFORMS=$(get_allowed_platforms "$DIR" "$PLATFORMS")
+              echo "Directory $DIR platforms: $ALLOWED_PLATFORMS"
+
+              # Get keep_version setting
+              KEEP_VERSION=$(get_keep_version "$DIR")
+              echo "Directory $DIR keep_version: $KEEP_VERSION"
+
+              IFS=',' read -ra ALLOWED_PLATFORM_ARRAY <<< "$ALLOWED_PLATFORMS"
+
+              for PLATFORM in "${ALLOWED_PLATFORM_ARRAY[@]}"; do
+                # Check if this platform is in the global platform list
+                PLATFORM_FOUND=false
+                for GLOBAL_PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                  if [ "$PLATFORM" = "$GLOBAL_PLATFORM" ]; then
+                    PLATFORM_FOUND=true
+                    break
+                  fi
+                done
+
+                if [ "$PLATFORM_FOUND" = false ]; then
+                  echo "Platform $PLATFORM for $DIR not in global platform list, skipping"
+                  continue
+                fi
+
+                ARCH="${PLATFORM#linux/}"
+                if [ "$ARCH" = "arm64" ]; then
+                  RUNNER="ubuntu-24.04-arm"
+                else
+                  RUNNER="ubuntu-latest"
+                fi
+
+                if [ $first -eq 0 ]; then MATRIX+=","; fi
+                first=0
+                MATRIX+="{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"dir\":\"$DIR\",\"image_name\":\"$IMAGE_NAME\",\"keep_version\":\"$KEEP_VERSION\"}"
+              done
+
+              # Handle artifact configuration
+              IMAGE_BASE="${{ vars.DEST_REGISTRY_HOST || 'ghcr.io' }}/${{ vars.DEST_REGISTRY_USER || github.repository_owner }}/${IMAGE_PREFIX}-${IMAGE_NAME}"
+              ARTIFACT_CONFIG=$(get_artifact_config "$DIR" "$FORMATS" "$ALLOWED_PLATFORMS")
+              IFS='|' read -ra CONFIG_PARTS <<< "$ARTIFACT_CONFIG"
+              CREATE_ARTIFACTS="${CONFIG_PARTS[0]}"
+              ARTIFACT_FORMATS="${CONFIG_PARTS[1]:-$FORMATS}"
+              ARTIFACT_PLATFORMS="${CONFIG_PARTS[2]}"
+
+              echo "Directory $DIR artifact config - create: $CREATE_ARTIFACTS, formats: $ARTIFACT_FORMATS, platforms: $ARTIFACT_PLATFORMS"
+
+              # Determine if we should create artifacts
+              SHOULD_CREATE=false
+              if [ "$CREATE_ARTIFACTS" = "true" ]; then
+                SHOULD_CREATE=true
+              elif [ "$CREATE_ARTIFACTS" = "false" ]; then
+                SHOULD_CREATE=false
+              elif [ "$CREATE_ARTIFACTS" = "auto" ]; then
+                # Check if artifacts already exist
+                EXISTING_ARTIFACTS=$(check_existing_artifacts "$IMAGE_BASE" "$ARTIFACT_FORMATS")
+                if [ "$EXISTING_ARTIFACTS" = "false" ]; then
+                  SHOULD_CREATE=true
+                  # Use default format if none specified
+                  if [ -z "$ARTIFACT_FORMATS" ]; then
+                    ARTIFACT_FORMATS="anaconda-iso"
+                  fi
+                else
+                  echo "Artifacts already exist for $DIR, skipping auto-creation"
+                fi
+              fi
+
+              if [ "$SHOULD_CREATE" = true ]; then
+                has_any_artifacts=true
+                IFS=',' read -ra ARTIFACT_FORMAT_ARRAY <<< "$ARTIFACT_FORMATS"
+                IFS=',' read -ra ARTIFACT_PLATFORM_ARRAY <<< "$ARTIFACT_PLATFORMS"
+
+                for ARTIFACT_PLATFORM in "${ARTIFACT_PLATFORM_ARRAY[@]}"; do
+                  # Check if this platform is in the global platform list
+                  PLATFORM_FOUND=false
+                  for GLOBAL_PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+                    if [ "$ARTIFACT_PLATFORM" = "$GLOBAL_PLATFORM" ]; then
+                      PLATFORM_FOUND=true
+                      break
+                    fi
+                  done
+
+                  if [ "$PLATFORM_FOUND" = false ]; then
+                    echo "Artifact platform $ARTIFACT_PLATFORM for $DIR not in global platform list, skipping"
+                    continue
+                  fi
+
+                  ARTIFACT_ARCH="${ARTIFACT_PLATFORM#linux/}"
+                  if [ "$ARTIFACT_ARCH" = "arm64" ]; then
+                    ARTIFACT_RUNNER="ubuntu-24.04-arm"
+                  else
+                    ARTIFACT_RUNNER="ubuntu-latest"
+                  fi
+
+                  for ARTIFACT_FORMAT in "${ARTIFACT_FORMAT_ARRAY[@]}"; do
+                    if [ $artifact_first -eq 0 ]; then ARTIFACT_MATRIX+=","; fi
+                    artifact_first=0
+                    ARTIFACT_MATRIX+="{\"platform\":\"$ARTIFACT_PLATFORM\",\"arch\":\"$ARTIFACT_ARCH\",\"runner\":\"$ARTIFACT_RUNNER\",\"dir\":\"$DIR\",\"image_name\":\"$IMAGE_NAME\",\"format\":\"$ARTIFACT_FORMAT\",\"keep_version\":\"$KEEP_VERSION\"}"
+                  done
+                done
+              fi
+            done
+
+            MATRIX+=']}'
+            ARTIFACT_MATRIX+=']}'
+
+            echo "Final Matrix: $MATRIX"
+            echo "Final Artifact Matrix: $ARTIFACT_MATRIX"
+
+            if [ "$has_any_artifacts" = true ]; then
+              echo 'has_artifacts=true' >> "$GITHUB_OUTPUT"
+            else
+              echo 'has_artifacts=false' >> "$GITHUB_OUTPUT"
+            fi
+
+            echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+            echo "artifact_matrix=$ARTIFACT_MATRIX" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "=== Setup script completed successfully ==="
+
+  # Matrix job: Build the bootc image for each (directory, platform)
+  build-image:
+    name: Build ${{ matrix.image_name }} (${{ matrix.arch }})
+    needs: setup
+    if: needs.setup.outputs.has_dirs == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+      tags: ${{ steps.build.outputs.tags }}
+    env:
+      SMDEV_CONTAINER_OFF: 1
+      SOURCE_REGISTRY_HOST: "registry.redhat.io"
+      DEST_REGISTRY_HOST: "${{ vars.DEST_REGISTRY_HOST || 'ghcr.io' }}"
+      DEST_REGISTRY_USER: "${{ vars.DEST_REGISTRY_USER || github.repository_owner }}"
+      DEST_REGISTRY_PASSWORD: "${{ secrets.DEST_REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}"
+      IMAGE_PREFIX: "${{ needs.setup.outputs.image_prefix }}"  
+    container:
+      image: registry.access.redhat.com/ubi9/ubi
+      options: --privileged -v /mnt:/mnt
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get container tools in UBI builder
+        run: dnf -y install podman buildah skopeo jq
+
+      - name: Register with Red Hat subscription manager
+        run: |
+          if [ -n "${{ secrets.RHT_ORGID }}" ] && [ -n "${{ secrets.RHT_ACT_KEY }}" ]; then
+            echo "Registering with organization ID and activation key..."
+            subscription-manager register --org=${{ secrets.RHT_ORGID }} --activationkey=${{ secrets.RHT_ACT_KEY }}
+          else
+            echo "Registering with username and password..."
+            subscription-manager register --username=${{ secrets.RH_USERNAME }} --password=${{ secrets.RH_PASSWORD }}
+          fi
+
+      - name: Workaround open podman-login action issue
+        env:
+          auth: "{ \"auths\": {} }"
+        run: |
+          mkdir -p $HOME/.docker
+          echo "$auth" > $HOME/.docker/config.json
+
+      - name: Log in to Red Hat Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.SOURCE_REGISTRY_HOST }}
+          username: ${{ secrets.SOURCE_REGISTRY_USER || secrets.RH_USERNAME }}
+          password: ${{ secrets.SOURCE_REGISTRY_PASSWORD || secrets.RH_PASSWORD }}
+          auth_file_path: /run/containers/0/auth.json
+
+      - name: Compute semantic version tag (vN) for ${{ matrix.image_name }}
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}"
+          IMAGE_BASE="${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${IMAGE_NAME}"
+          KEEP_VERSION="${{ matrix.keep_version }}"
+
+          echo "Determining version for: $IMAGE_BASE"
+          echo "Keep version setting: $KEEP_VERSION"
+
+          EXISTING_TAGS=""
+          if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+            EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json 2>/dev/null | \
+              grep -oE '^v[0-9]+$' | \
+              sort -V || echo "")
+            echo "Found existing tags: $EXISTING_TAGS"
+          else
+            echo "No existing tags found or repository doesn't exist yet"
+          fi
+
+          if [ -z "$EXISTING_TAGS" ]; then
+            echo "No existing version tags found, starting with v1"
+            NEXT_TAG="v1"
+          else
+            HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+            
+            if [ "$KEEP_VERSION" = "true" ]; then
+              NEXT_TAG="$HIGHEST_VERSION"
+              echo "Keeping existing version: $NEXT_TAG (keep_version=true)"
+            else
+              HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+              NEXT_NUM=$((HIGHEST_NUM + 1))
+              NEXT_TAG="v${NEXT_NUM}"
+              echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_TAG"
+            fi
+          fi
+
+          echo "NEXT_TAG=$NEXT_TAG" | tee -a "$GITHUB_ENV"
+          echo "next=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build platform-specific image with Buildah
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}
+          tags: |
+            latest-${{ matrix.arch }}
+            ${{ github.sha }}-${{ matrix.arch }}
+            ${{ steps.version.outputs.next }}-${{ matrix.arch }}
+          platforms: ${{ matrix.platform }}
+          context: ./${{ matrix.dir }}
+          containerfiles: |
+            ./${{ matrix.dir }}/Containerfile
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.DEST_REGISTRY_HOST }}
+          username: ${{ env.DEST_REGISTRY_USER }}
+          password: ${{ env.DEST_REGISTRY_PASSWORD }}
+          auth_file_path: /run/containers/0/auth.json
+
+      - name: Push platform-specific image to GHCR
+        id: push
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ${{ env.DEST_REGISTRY_HOST }}
+
+      - name: Clean up the subscription
+        if: always()
+        run: subscription-manager unregister
+
+  # Matrix job: Build installable artifacts for each (directory, platform, format)
+  build-artifacts:
+    name: Build ${{ matrix.image_name }} artifacts (${{ matrix.arch }}, ${{ matrix.format }})
+    needs: [setup, build-image]
+    if: needs.setup.outputs.has_artifacts == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.artifact_matrix) }}
+    runs-on: ${{ matrix.runner }}
+    env:
+      SMDEV_CONTAINER_OFF: 1
+      DEST_REGISTRY_HOST: "${{ vars.DEST_REGISTRY_HOST || 'ghcr.io' }}"
+      DEST_REGISTRY_USER: "${{ vars.DEST_REGISTRY_USER || github.repository_owner }}"
+      DEST_REGISTRY_PASSWORD: "${{ secrets.DEST_REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}"
+      IMAGE_PREFIX: "${{ needs.setup.outputs.image_prefix }}"
+    container:
+      image: registry.access.redhat.com/ubi9/ubi
+      options: --privileged --user root -v /mnt:/mnt
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get container tools in UBI builder
+        run: |
+          dnf -y install podman buildah skopeo jq 
+          dnf clean all
+
+      - name: Setup output directory
+        run: |
+          set -euo pipefail
+          
+          echo "=== /mnt contents ==="
+          ls -la /mnt || true
+          
+          if mkdir -p /mnt/output 2>/dev/null; then
+            echo "Successfully created output directory in /mnt"
+            OUTPUT_DIR="/mnt/output"
+          else
+            echo "Cannot write to /mnt, using /var/tmp instead"
+            mkdir -p /var/tmp/output
+            OUTPUT_DIR="/var/tmp/output"
+          fi
+          
+          echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+          echo "Using output directory: $OUTPUT_DIR"
+
+      - name: Register with Red Hat subscription manager
+        run: |
+          if [ -n "${{ secrets.RHT_ORGID }}" ] && [ -n "${{ secrets.RHT_ACT_KEY }}" ]; then
+            echo "Registering with organization ID and activation key..."
+            subscription-manager register --org=${{ secrets.RHT_ORGID }} --activationkey=${{ secrets.RHT_ACT_KEY }}
+          else
+            echo "Registering with username and password..."
+            subscription-manager register --username=${{ secrets.RH_USERNAME }} --password=${{ secrets.RH_PASSWORD }}
+          fi
+
+      - name: Workaround open podman-login action issue
+        env:
+          auth: "{ \"auths\": {} }"
+        run: |
+          mkdir -p $HOME/.docker
+          echo "$auth" > $HOME/.docker/config.json
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.DEST_REGISTRY_HOST }}
+          username: ${{ env.DEST_REGISTRY_USER }}
+          password: ${{ env.DEST_REGISTRY_PASSWORD }}
+          auth_file_path: /run/containers/0/auth.json
+
+      - name: Determine image version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}"
+          IMAGE_BASE="${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${IMAGE_NAME}"
+          KEEP_VERSION="${{ matrix.keep_version }}"
+
+          echo "Determining version for: $IMAGE_BASE"
+          echo "Keep version setting: $KEEP_VERSION"
+
+          EXISTING_TAGS=""
+          if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+            EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json 2>/dev/null | \
+              grep -oE '^v[0-9]+$' | \
+              sort -V || echo "")
+            echo "Found existing tags: $EXISTING_TAGS"
+          else
+            echo "No existing tags found or repository doesn't exist yet"
+          fi
+
+          if [ -z "$EXISTING_TAGS" ]; then
+            echo "No existing version tags found, starting with v1"
+            CURRENT_TAG="v1"
+          else
+            HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+            
+            if [ "$KEEP_VERSION" = "true" ]; then
+              CURRENT_TAG="$HIGHEST_VERSION"
+              echo "Using existing version: $CURRENT_TAG (keep_version=true)"
+            else
+              HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+              INCREMENTED_VERSION="v$((HIGHEST_NUM + 1))"
+
+              if skopeo inspect "docker://${IMAGE_BASE}:${INCREMENTED_VERSION}-${{ matrix.arch }}" >/dev/null 2>&1; then
+                CURRENT_TAG="$INCREMENTED_VERSION"
+                echo "Using incremented version: $CURRENT_TAG"
+              else
+                CURRENT_TAG="$HIGHEST_VERSION"
+                echo "Using highest existing version: $CURRENT_TAG"
+              fi
+            fi
+          fi
+
+          echo "VERSION_TAG=$CURRENT_TAG" | tee -a "$GITHUB_ENV"
+          echo "version=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Pull bootc image for artifact creation
+        run: |
+          IMAGE="${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}:latest-${{ matrix.arch }}" 
+          echo "Pulling bootc image: $IMAGE"
+          podman pull "$IMAGE"
+
+      - name: Check available disk space
+        run: |
+          echo "=== Disk space before build==="
+          df -h
+          echo ""
+          echo "=== Container images ==="
+          podman image list
+
+      - name: Create bootc artifact with bootc-image-builder
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}:latest-${{ matrix.arch }}"
+          
+          echo "Using output directory: $OUTPUT_DIR"
+          echo "Creating ${{ matrix.format }} artifact for $IMAGE"
+
+          CONFIG_MOUNT=""
+          if [ -f "./${{ matrix.dir }}/config.toml" ]; then
+            echo "Found config.toml for ${{ matrix.dir }}, will mount it"
+            CONFIG_MOUNT="-v ./${{ matrix.dir }}/config.toml:/config.toml:ro"
+          else
+            echo "No config.toml found for ${{ matrix.dir }}, proceeding without custom configuration"
+          fi
+
+          podman run \
+            --rm \
+            --privileged \
+            --pull=newer \
+            --security-opt label=type:unconfined_t \
+            -v ${OUTPUT_DIR}:/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            ${CONFIG_MOUNT} \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type ${{ matrix.format }} \
+            --use-librepo=True \
+            "$IMAGE"
+
+          echo "Created artifacts:"
+          ls -la ${OUTPUT_DIR}/
+
+          if [ ! "$(ls -A ${OUTPUT_DIR}/)" ]; then
+            echo "ERROR: No artifacts were created!"
+            exit 1
+          fi
+
+          echo "=== Disk space ==="
+          df -h
+          echo ""
+          echo "=== Container images ==="
+          podman image list
+          echo ""
+
+          echo "Removing $IMAGE"
+          podman rmi "$IMAGE" || true
+          podman rmi quay.io/centos-bootc/bootc-image-builder:latest || true
+
+      - name: Check available disk space
+        run: |
+          echo "=== Disk space after build ==="
+          df -h
+          echo ""
+          echo "=== Container images ==="
+          podman image list
+
+      - name: Configure container storage for scratch image build
+        run: |
+          set -euo pipefail
+          
+          if mkdir -p /mnt/containers/storage 2>/dev/null; then
+            echo "Successfully created storage directory in /mnt"
+            STORAGE_ROOT="/mnt/containers/storage"
+          else
+            echo "Cannot write to /mnt, using /var/tmp instead"
+            mkdir -p /var/tmp/containers/storage
+            STORAGE_ROOT="/var/tmp/containers/storage"
+          fi
+          
+          echo "STORAGE_ROOT=$STORAGE_ROOT" >> $GITHUB_ENV
+          
+          podman system reset -f || true
+          
+          mkdir -p /etc/containers
+          cat > /etc/containers/storage.conf << EOF
+          [storage]
+          driver = "overlay"
+          runroot = "/run/containers/storage"
+          graphroot = "$STORAGE_ROOT"
+          
+          [storage.options]
+          additionalimagestores = []
+          
+          [storage.options.overlay]
+          mountopt = "nodev,metacopy=on"
+          EOF
+          
+          echo "=== Storage configuration ==="
+          cat /etc/containers/storage.conf
+          
+          podman info | grep -A 5 "graphRoot"
+
+      - name: Create scratch container image with artifact
+        id: artifact_image
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_IMAGE_NAME="${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image_name }}-${{ matrix.format }}"
+          ARTIFACT_IMAGE_TAG="${{ steps.version.outputs.version }}-${{ matrix.arch }}"
+
+          echo "Creating scratch image: $ARTIFACT_IMAGE_NAME:$ARTIFACT_IMAGE_TAG"
+          echo "Using storage root: $STORAGE_ROOT"
+
+          cat > /tmp/Containerfile.artifact << 'EOF'
+          FROM scratch
+          COPY ${OUTPUT_DIR}/ /
+          EOF
+
+          cd ${OUTPUT_DIR}
+          buildah bud \
+            --tag "$ARTIFACT_IMAGE_NAME:$ARTIFACT_IMAGE_TAG" \
+            --file /tmp/Containerfile.artifact \
+            .
+
+          echo "artifact_image=$ARTIFACT_IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_tag=$ARTIFACT_IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check available disk space
+        run: |
+          echo "=== Disk space before artifact push ==="
+          df -h
+          echo ""
+          echo "=== Container images ==="
+          podman image list
+
+      - name: Push artifact image to registry
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.artifact_image.outputs.artifact_image }}
+          tags: ${{ steps.artifact_image.outputs.artifact_tag }}
+          registry: ${{ env.DEST_REGISTRY_HOST }}
+
+      - name: Clean up the subscription
+        if: always()
+        run: subscription-manager unregister
+
+  # Job: Create multi-platform manifests for each changed directory
+  create-manifest:
+    name: Create multi-platform manifests
+    needs: [setup, build-image]
+    if: needs.setup.outputs.has_dirs == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DEST_REGISTRY_HOST: "${{ vars.DEST_REGISTRY_HOST || 'ghcr.io' }}"
+      DEST_REGISTRY_USER: "${{ vars.DEST_REGISTRY_USER || github.repository_owner }}"
+      DEST_REGISTRY_PASSWORD: "${{ secrets.DEST_REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}"
+      IMAGE_PREFIX: "${{ needs.setup.outputs.image_prefix }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.DEST_REGISTRY_HOST }}
+          username: ${{ env.DEST_REGISTRY_USER }}
+          password: ${{ env.DEST_REGISTRY_PASSWORD }}
+
+      - name: Install skopeo for version computation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Create and push multi-platform manifests per directory
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          get_allowed_platforms() {
+            local dir="$1"
+            local default_platforms="$2"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              local config_platforms=$(grep -E '^platforms\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^platforms\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ')
+              if [ -n "$config_platforms" ]; then
+                echo "$config_platforms"
+                return
+              fi
+            fi
+
+            echo "$default_platforms"
+          }
+
+          get_keep_version() {
+            local dir="$1"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              local keep_version=$(grep -E '^keep_version\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^keep_version\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+              if [ "$keep_version" = "true" ]; then
+                echo "true"
+                return
+              fi
+            fi
+
+            echo "false"
+          }
+
+          get_image_name() {
+            local full_path="$1"
+            echo "$(basename "$full_path")"
+          }
+
+          IFS=',' read -ra GLOBAL_PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
+
+          DIRS_JSON='${{ needs.setup.outputs.dirs }}'
+          echo "Directories to process: $DIRS_JSON"
+
+          DIRS_CLEAN=$(echo "$DIRS_JSON" | sed 's/\[//g; s/\]//g; s/"//g')
+          IFS=',' read -ra DIRS <<< "$DIRS_CLEAN"
+
+          for DIR in "${DIRS[@]}"; do
+            IMAGE_NAME=$(get_image_name "$DIR")
+            IMAGE_BASE="${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-$IMAGE_NAME" 
+
+            echo "\n=== Processing ${{ env.IMAGE_PREFIX }}-$IMAGE_NAME (from $DIR) ==="
+
+            ALLOWED_PLATFORMS=$(get_allowed_platforms "$DIR" "${{ needs.setup.outputs.platforms }}")
+            echo "Directory $DIR platforms: $ALLOWED_PLATFORMS"
+
+            KEEP_VERSION=$(get_keep_version "$DIR")
+            echo "Directory $DIR keep_version: $KEEP_VERSION"
+
+            IFS=',' read -ra ALLOWED_PLATFORM_ARRAY <<< "$ALLOWED_PLATFORMS"
+            BUILT_PLATFORMS=()
+
+            for PLATFORM in "${ALLOWED_PLATFORM_ARRAY[@]}"; do
+              PLATFORM_FOUND=false
+              for GLOBAL_PLATFORM in "${GLOBAL_PLATFORM_ARRAY[@]}"; do
+                if [ "$PLATFORM" = "$GLOBAL_PLATFORM" ]; then
+                  PLATFORM_FOUND=true
+                  break
+                fi
+              done
+
+              if [ "$PLATFORM_FOUND" = true ]; then
+                BUILT_PLATFORMS+=("$PLATFORM")
+              fi
+            done
+
+            if [ ${#BUILT_PLATFORMS[@]} -eq 0 ]; then
+              echo "No valid platforms found for $DIR, skipping manifest creation"
+              continue
+            fi
+
+            echo "Creating manifests for platforms: ${BUILT_PLATFORMS[*]}"
+
+            EXISTING_TAGS=""
+            if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+              EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json 2>/dev/null | \
+                grep -oE '^v[0-9]+' | sort -V || echo "")
+              echo "Found existing base version tags: $EXISTING_TAGS"
+            else
+              echo "No existing tags found"
+            fi
+
+            if [ -z "$EXISTING_TAGS" ]; then
+              echo "No existing version tags found, using v1"
+              VERSION_TAG="v1"
+            else
+              HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+              
+              if [ "$KEEP_VERSION" = "true" ]; then
+                VERSION_TAG="$HIGHEST_VERSION"
+                echo "Using existing version: $VERSION_TAG (keep_version=true)"
+              else
+                HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+                NEXT_VERSION="v$((HIGHEST_NUM + 1))"
+                PLATFORM_CHECK="${BUILT_PLATFORMS[0]#linux/}"
+                
+                if skopeo inspect "docker://${IMAGE_BASE}:${NEXT_VERSION}-${PLATFORM_CHECK}" >/dev/null 2>&1; then
+                  VERSION_TAG="$NEXT_VERSION"
+                  echo "Using incremented version: $VERSION_TAG"
+                else
+                  VERSION_TAG="$HIGHEST_VERSION"
+                  echo "Using highest existing version: $VERSION_TAG"
+                fi
+              fi
+            fi
+
+            for TAG_TYPE in "latest" "${{ github.sha }}" "$VERSION_TAG"; do
+              echo "Creating manifest for $IMAGE_BASE:$TAG_TYPE"
+
+              MANIFEST_IMAGES=()
+              for PLATFORM in "${BUILT_PLATFORMS[@]}"; do
+                ARCH="${PLATFORM#linux/}"
+                MANIFEST_IMAGES+=("$IMAGE_BASE:$TAG_TYPE-$ARCH")
+              done
+
+              podman manifest create "$IMAGE_BASE:$TAG_TYPE"
+              for MANIFEST_IMAGE in "${MANIFEST_IMAGES[@]}"; do
+                echo "Adding $MANIFEST_IMAGE to manifest"
+                podman manifest add "$IMAGE_BASE:$TAG_TYPE" "$MANIFEST_IMAGE"
+              done
+
+              echo "Pushing manifest $IMAGE_BASE:$TAG_TYPE"
+              podman manifest push "$IMAGE_BASE:$TAG_TYPE" "docker://$IMAGE_BASE:$TAG_TYPE"
+
+              podman manifest rm "$IMAGE_BASE:$TAG_TYPE" || true
+            done
+          done
+
+  # Summary job
+  summary:
+    name: Build Summary
+    needs: [setup, build-image, create-manifest, build-artifacts]
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      DEST_REGISTRY_HOST: "${{ vars.DEST_REGISTRY_HOST || 'ghcr.io' }}"
+      DEST_REGISTRY_USER: "${{ vars.DEST_REGISTRY_USER || github.repository_owner }}"
+      IMAGE_PREFIX: "${{ needs.setup.outputs.image_prefix }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print build summary
+        shell: bash
+        run: |
+          get_allowed_platforms() {
+            local dir="$1"
+            local default_platforms="$2"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              local config_platforms=$(grep -E '^platforms\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^platforms\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ')
+              if [ -n "$config_platforms" ]; then
+                echo "$config_platforms"
+                return
+              fi
+            fi
+
+            echo "$default_platforms"
+          }
+
+          get_keep_version() {
+            local dir="$1"
+
+            if [ -f "$dir/.buildconfig" ]; then
+              local keep_version=$(grep -E '^keep_version\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^keep_version\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+              if [ "$keep_version" = "true" ]; then
+                echo "true"
+                return
+              fi
+            fi
+
+            echo "false"
+          }
+
+          get_artifact_config() {
+            local dir="$1"
+            local default_formats="${{ needs.setup.outputs.formats }}"
+
+            local create_artifacts=""
+            local artifact_formats=""
+
+            if [ -f "$dir/.buildconfig" ]; then
+              create_artifacts=$(grep -E '^artifacts\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^artifacts\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' || echo "")
+              artifact_formats=$(grep -E '^artifact_formats\s*[:=]\s*' "$dir/.buildconfig" | sed -E 's/^artifact_formats\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ' || echo "")
+            fi
+
+            if [ -z "$create_artifacts" ]; then
+              create_artifacts="auto"
+            fi
+
+            echo "$create_artifacts,$artifact_formats"
+          }
+
+          get_image_name() {
+            local full_path="$1"
+            echo "$(basename "$full_path")"
+          }
+
+          echo "## Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ needs.setup.outputs.has_dirs }}" != "true" ]; then
+            echo "No buildable directory changes detected in this run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "### Global Configuration" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image Prefix**: ${{ env.IMAGE_PREFIX }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Platforms**: ${{ needs.setup.outputs.platforms }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Formats**: ${{ needs.setup.outputs.formats }}" >> "$GITHUB_STEP_SUMMARY"
+          BASE_PATH="${{ needs.setup.outputs.base_path }}"
+          if [ -n "$BASE_PATH" ]; then
+            echo "- **Base Path**: $BASE_PATH" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Base Path**: / (root)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          DIRS_JSON='${{ needs.setup.outputs.dirs }}'
+          DIRS_CLEAN=$(echo "$DIRS_JSON" | sed 's/\[//g; s/\]//g; s/"//g')
+          IFS=',' read -ra DIRS <<< "$DIRS_CLEAN"
+
+          echo "### Bootc Images Built" >> "$GITHUB_STEP_SUMMARY"
+          for DIR in "${DIRS[@]}"; do
+            IMAGE_NAME=$(get_image_name "$DIR")
+            ALLOWED_PLATFORMS=$(get_allowed_platforms "$DIR" "${{ needs.setup.outputs.platforms }}")
+            KEEP_VERSION=$(get_keep_version "$DIR")
+            
+            EXTRA_INFO=""
+            if [ "$ALLOWED_PLATFORMS" != "${{ needs.setup.outputs.platforms }}" ]; then
+              EXTRA_INFO="platforms: $ALLOWED_PLATFORMS"
+            fi
+            if [ "$KEEP_VERSION" = "true" ]; then
+              if [ -n "$EXTRA_INFO" ]; then
+                EXTRA_INFO="$EXTRA_INFO, keep_version: true"
+              else
+                EXTRA_INFO="keep_version: true"
+              fi
+            fi
+            
+            if [ -n "$EXTRA_INFO" ]; then
+              echo "- **$IMAGE_NAME** (from $DIR, $EXTRA_INFO): \`${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-$IMAGE_NAME:{latest | ${{ github.sha }} | vN}\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- **$IMAGE_NAME** (from $DIR): \`${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-$IMAGE_NAME:{latest | ${{ github.sha }} | vN}\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ needs.setup.outputs.has_artifacts }}" = "true" ]; then
+            echo "### Installable Artifacts Built" >> "$GITHUB_STEP_SUMMARY"
+
+            ARTIFACT_MATRIX_JSON='${{ needs.setup.outputs.artifact_matrix }}'
+
+            for DIR in "${DIRS[@]}"; do
+              IMAGE_NAME=$(get_image_name "$DIR")
+
+              DIR_FORMATS=$(echo "$ARTIFACT_MATRIX_JSON" | jq -r --arg dir "$DIR" '.include[] | select(.dir == $dir) | .format' | sort -u | tr '\n' ',' | sed 's/,$//')
+              DIR_PLATFORMS=$(echo "$ARTIFACT_MATRIX_JSON" | jq -r --arg dir "$DIR" '.include[] | select(.dir == $dir) | .platform' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+              if [ -n "$DIR_FORMATS" ]; then
+                echo "- **$IMAGE_NAME** (from $DIR):" >> "$GITHUB_STEP_SUMMARY"
+                echo "  - **Formats**: $DIR_FORMATS" >> "$GITHUB_STEP_SUMMARY"
+                echo "  - **Platforms**: $DIR_PLATFORMS" >> "$GITHUB_STEP_SUMMARY"
+
+                IFS=',' read -ra FORMAT_ARRAY <<< "$DIR_FORMATS"
+                for FORMAT in "${FORMAT_ARRAY[@]}"; do
+                  echo "  - **Image**: \`${{ env.DEST_REGISTRY_HOST }}/${{ env.DEST_REGISTRY_USER }}/${{ env.IMAGE_PREFIX }}-$IMAGE_NAME-$FORMAT:{latest | vN}\`" >> "$GITHUB_STEP_SUMMARY"
+                done
+              fi
+            done
+          else
+            echo "### Installable Artifacts" >> "$GITHUB_STEP_SUMMARY"
+            echo "No artifacts were built in this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Configuration Notes" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Only directories with a Containerfile that changed (or whose contents changed) are built." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Directories where only blacklisted files (.buildconfig, README.md) changed are skipped." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deleted directories are ignored gracefully (no build attempted)." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version tags are created as vN (and vN-<arch> for platform images)." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Platform restrictions can be specified using a \`.buildconfig\` file in each directory." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Base path can be configured using the \`BASE_PATH\` variable or workflow input." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### .buildconfig options:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`platforms: linux/amd64,linux/arm64\` - Restrict platforms for both bootc images and artifacts (default: linux/amd64,linux/arm64)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`artifacts: true|false|auto\` - Enable/disable artifact creation (default: auto - create if none exist)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`artifact_formats: anaconda-iso,qcow2,vmdk,raw,ami,vhd,gce\` - Specify artifact formats" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`keep_version: true|false\` - Keep existing version instead of incrementing (default: false)" >> "$GITHUB_STEP_SUMMARY"
