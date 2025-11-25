@@ -77,9 +77,12 @@ This repo uses GitHub Actions to automatically build:
 - **Bootc device images** (`devices/` changes → `ghcr.io/owner/device-demo-*`)
 - **Application images** (`apps/` changes → `ghcr.io/owner/app-demo-*`)
 
-Images are built for x86_64 and ARM64 with automatic versioning.
+Images are built with automatic versioning.
+
+You can [know more about the GitHub Actions workflow that builds the bootc images and how to setup your own pipeline here](./github_actions_workflow.md).
 
 If you want to check other examples you can get some ideas from [`bootc-build-scenarios`](https://github.com/luisarizmendi/bootc-build-scenarios) repo.
+
 
 
 ## Support & Feedback

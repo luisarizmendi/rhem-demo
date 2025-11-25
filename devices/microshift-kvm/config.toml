@@ -91,4 +91,3 @@ dracut -f --regenerate-all || true
 %end
 reboot --eject
 '''
-

@@ -50,3 +50,4 @@ RUN chmod +x /usr/local/bin/* && \
 #    semodule -X 300 -i /tmp/my-cockpit.pp && \
 #    restorecon -Rv /usr 
 
+
