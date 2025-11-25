@@ -1,0 +1,80 @@
+apiVersion: flightctl.io/v1alpha1
+kind: Fleet
+metadata:
+  labels: {}
+  name: demo-microshift
+spec:
+  selector:
+    matchLabels:
+      fleet: "demo-microshift"
+  template:
+    metadata:
+      labels:
+        fleet: demo-microshift
+    spec:
+      applications:
+      - envVars:
+          PGADMIN_MAIL: pgadmin@none.com
+          PGADMIN_PW: pgredhat
+          POSTGRES_DB: postgres
+          POSTGRES_PW: pgadmin
+          POSTGRES_USER: pgredhat
+        image: ghcr.io/luisarizmendi/app-demo-postgres:v1
+        name: postgres
+      config:
+      - name: acm-crd
+        httpRef:
+          filePath: /var/local/acm-import/crd.yaml
+          repository: acm-registration
+          suffix: /agent-registration/crds/v1
+      - name: acm-import
+        httpRef:
+          filePath: /var/local/acm-import/import.yaml
+          repository: acm-registration
+          suffix: /agent-registration/manifests/{{.metadata.name}}
+#      - name: pull-secret
+#        inline:
+#        - path: "/etc/crio/openshift-pull-secret"
+#          content: "{\"auths\":{...}}"
+      - name: apply-acm-manifests
+        inline:
+        - path: "/etc/flightctl/hooks.d/afterupdating/50-acm-registration.yaml"
+          content: |
+            - if:
+              - path: /var/local/acm-import/crd.yaml
+                op: [created]
+              run: kubectl apply -f /var/local/acm-import/crd.yaml
+              envVars:
+                KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
+            - if:
+              - path: /var/local/acm-import/import.yaml
+                op: [created]
+              run: kubectl apply -f /var/local/acm-import/import.yaml
+              envVars:
+                KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
+      - name: motd-update
+        configType: InlineConfigProviderSpec
+        inline:
+          - path: "/etc/motd"
+            content: "This system is managed by flightctl."
+            mode: 0644
+      - gitRef:
+          mountPath: /
+          path: /configs/site/{{ .metadata.labels.site }}
+          repository: rhem-demo
+          targetRevision: main
+        name: site-conf
+      - gitRef:
+          mountPath: /
+          path: /configs/function/{{ .metadata.labels.function }}
+          repository: rhem-demo
+          targetRevision: main
+        name: function-conf
+      systemd:
+        matchPatterns:
+          - "flightctl-agent.service"
+      os:
+        image: ghcr.io/luisarizmendi/device-demo-kiosk:v2
+
+
+

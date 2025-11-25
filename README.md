@@ -11,7 +11,7 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 - Built-in observability and remote troubleshooting
 - Secure pull-mode device communication
 
-**Demo Duration:** ~50 minutes
+**Demo Duration:** ~90 minutes
 
 ## Demo Architecture
 
