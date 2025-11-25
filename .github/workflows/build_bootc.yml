@@ -14,11 +14,11 @@ on:
       base_path:
         description: 'Base path for image directories (e.g., "devices" or leave empty for root)'
         required: false
-        default: ''
+        default: 'devices'
       image_prefix:
         description: 'Image name prefix (e.g., "bootc" for bootc-<imagename>)'
         required: false
-        default: 'bootc'
+        default: 'device'
   push:
     branches:
       - main
