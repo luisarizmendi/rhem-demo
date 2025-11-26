@@ -67,4 +67,3 @@ RUN set -xe; \
            --no-hostonly \
            /usr/lib/modules/$kver/initramfs.img "$kver"
 
-
