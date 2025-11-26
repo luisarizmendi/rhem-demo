@@ -1,0 +1,145 @@
+#
+# Deploy RHEM (requires ACM)
+#
+
+---
+kind: Project
+apiVersion: project.openshift.io/v1
+metadata:
+  name: openshift-admin
+  labels:
+    kubernetes.io/metadata.name: openshift-admin
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+spec: {}
+
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openshift-admin-privileged
+  namespace: openshift-admin
+  
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-admin-privileged-crb
+subjects:
+- kind: ServiceAccount
+  name: openshift-admin-privileged
+  namespace: openshift-admin
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: openshift-admin-privileged-scc
+allowPrivilegedContainer: true
+allowHostNetwork: true
+allowHostPID: true
+allowHostIPC: true
+readOnlyRootFilesystem: false
+runAsUser:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:openshift-admin:openshift-admin-privileged
+
+  
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bootstrap-rhem
+  namespace: openshift-admin
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-admin-privileged
+      containers:
+      - name: bootstrap
+        image: quay.io/luisarizmendi/ocp-job:latest 
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Wait for ACM to be ready
+          until oc get pods -n multicluster-engine | grep 'multicluster-engine-operator' | grep 'Running' | grep '1/1'; do
+            echo "Waiting for ACM multicluster-engine operator..."
+            sleep 10
+          done
+
+          # Ensure that Red Hat Edge Manager is enabled
+          oc patch multiclusterhubs.operator.open-cluster-management.io multiclusterhub -n open-cluster-management --type json --patch '[{"op": "add", "path":"/spec/overrides/components/-", "value": {"name":"edge-manager-preview","enabled": true}}]'
+
+          sleep 10
+
+          echo "Adding RHEM console plugin"
+          oc apply -f - <<EOF
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: enable-plugin-rhem-plugin
+            namespace: openshift-admin
+          spec:
+            template:
+              spec:
+                serviceAccountName: openshift-admin-privileged
+                containers:
+                - name: shell
+                  image: quay.io/luisarizmendi/ocp-job:latest  
+                  command: ["/bin/sh", "-c"]
+                  args:
+                  - |
+                      PLUGIN_NAME="flightctl-plugin"
+                      existing_plugins=\$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins[*]}')
+                      read -a plugins_array <<< "\$existing_plugins"
+                      for plugin in "\${plugins_array[@]}"; do
+                          if [[ "\$plugin" == "\$PLUGIN_NAME" ]]; then
+                              echo "Plugin \$PLUGIN_NAME is already enabled."
+                              exit 0
+                          fi
+                      done
+                      plugins_array+=("\$PLUGIN_NAME")
+                      json_array=\$(printf '%s\n' "\${plugins_array[@]}" | jq -R . | jq -s .)
+
+                      echo "Patching with new plugins: \$json_array"
+                      oc patch console.operator.openshift.io cluster --type=json -p="[{'op': 'add', 'path': '/spec/plugins', 'value': \$json_array }]"
+
+                      echo "Enabled plugins in the console:"
+                      oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}'
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                        - "ALL"
+                    runAsNonRoot: true
+                    seccompProfile:
+                      type: RuntimeDefault
+                restartPolicy: Never
+            backoffLimit: 1
+          EOF
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
