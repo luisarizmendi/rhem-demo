@@ -42,18 +42,18 @@ RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
 RUN systemctl set-default graphical.target
 
 #////////////////////////////////////////
-#DEMO V2 update (cockpit + kvm + firewall)
+#DEMO V2 update (cockpit )
 #////////////////////////////////////////
-#RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
-#    systemctl enable cockpit.socket && \
-#    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
-#    dnf clean all
+RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
+    systemctl enable cockpit.socket && \
+    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
+    dnf clean all
 
 ## Build and install the SELinux module for Cockpit
-#RUN checkmodule -M -m -o /tmp/my-cockpit.mod /tmp/my-cockpit.te && \
-#    semodule_package -o /tmp/my-cockpit.pp -m /tmp/my-cockpit.mod && \
-#    semodule -X 300 -i /tmp/my-cockpit.pp && \
-#    restorecon -Rv /usr 
+RUN checkmodule -M -m -o /tmp/my-cockpit.mod /tmp/my-cockpit.te && \
+    semodule_package -o /tmp/my-cockpit.pp -m /tmp/my-cockpit.mod && \
+    semodule -X 300 -i /tmp/my-cockpit.pp && \
+    restorecon -Rv /usr 
 
 #////////////////////////////////////////
 
