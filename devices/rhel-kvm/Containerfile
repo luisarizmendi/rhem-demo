@@ -50,4 +50,3 @@ RUN checkmodule -M -m -o /tmp/my-cockpit.mod /tmp/my-cockpit.te && \
     semodule -X 300 -i /tmp/my-cockpit.pp && \
     restorecon -Rv /usr 
 
-

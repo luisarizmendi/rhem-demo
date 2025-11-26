@@ -17,9 +17,6 @@ RUN dnf -y copr enable @redhat-et/flightctl && \
      rm -rf /var/{cache,log} /var/lib/{dnf,rhsm} && \
      systemctl enable podman.service
 
-ADD config.yaml /etc/flightctl/
-
-
 ################################################################################
 # Customization
 ################################################################################
@@ -31,9 +28,7 @@ RUN dnf install -y shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git 
 
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /etc/gdm/
 
-COPY files/gnome-kiosk-script /var/home/kiosk/.local/bin/
-COPY files/user-templates-standard /etc/accountsservice/user-templates/standard
-COPY files/gdm-custom.conf    /etc/gdm/custom.conf
+COPY files/ /
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
     chown -R kiosk:kiosk /var/home/kiosk
@@ -55,3 +50,4 @@ RUN systemctl set-default graphical.target
 #    restorecon -Rv /usr 
 
 #////////////////////////////////////////
+
