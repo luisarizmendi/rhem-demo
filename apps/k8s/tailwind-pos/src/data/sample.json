@@ -1,0 +1,100 @@
+{
+  "products": [
+      {
+        "id": 1,
+        "name": "Beef Burger",
+        "price": 5.83,
+        "currency": "EUR",
+        "image": "img/beef-burger.png",
+        "options": null
+      },
+      {
+        "id": 2,
+        "name": "Sandwich",
+        "price": 4.14,
+        "currency": "EUR",
+        "image": "img/sandwich.png",
+        "options": null
+      },
+      {
+        "id": 3,
+        "name": "Sawarma",
+        "price": 3.87,
+        "currency": "EUR",
+        "image": "img/sawarma.png",
+        "options": null
+      },
+      {
+        "id": 4,
+        "name": "Croissant",
+        "price": 2.07,
+        "currency": "EUR",
+        "image": "img/croissant.png",
+        "options": null
+      },
+      {
+        "id": 5,
+        "name": "Cinnamon Roll",
+        "price": 2.60,
+        "currency": "EUR",
+        "image": "img/cinnamon-roll.png",
+        "options": null
+      },
+      {
+        "id": 6,
+        "name": "Choco Glaze Donut with Peanut",
+        "price": 1.30,
+        "currency": "EUR",
+        "image": "img/choco-glaze-donut-peanut.png",
+        "options": null
+      },
+      {
+        "id": 7,
+        "name": "Choco Glazed Donut",
+        "price": 1.30,
+        "currency": "EUR",
+        "image": "img/choco-glaze-donut.png",
+        "options": null
+      },
+      {
+        "id": 8,
+        "name": "Red Glazed Donut",
+        "price": 1.30,
+        "currency": "EUR",
+        "image": "img/red-glaze-donut.png",
+        "options": null
+      },
+      {
+        "id": 9,
+        "name": "Iced Coffee Latte",
+        "price": 3.23,
+        "currency": "EUR",
+        "image": "img/coffee-latte.png",
+        "options": null
+      },
+      {
+        "id": 10,
+        "name": "Iced Chocolate",
+        "price": 2.60,
+        "currency": "EUR",
+        "image": "img/ice-chocolate.png",
+        "options": null
+      },
+      {
+        "id": 11,
+        "name": "Iced Tea",
+        "price": 1.94,
+        "currency": "EUR",
+        "image": "img/ice-tea.png",
+        "options": null
+      },
+      {
+        "id": 12,
+        "name": "Iced Matcha Latte",
+        "price": 2.84,
+        "currency": "EUR",
+        "image": "img/matcha-latte.png",
+        "options": null
+      }
+  ]
+}

@@ -79,7 +79,7 @@ This repo uses GitHub Actions to automatically build:
 
 Images are built with automatic versioning.
 
-You can [know more about the GitHub Actions workflow that builds the bootc images and how to setup your own pipeline here](./github_actions_workflow.md).
+You can [know more about the GitHub Actions workflow that builds the bootc images and how to setup your own pipeline here](docs/github_actions_workflow.md).
 
 If you want to check other examples you can get some ideas from [`bootc-build-scenarios`](https://github.com/luisarizmendi/bootc-build-scenarios) repo.
 
