@@ -15,10 +15,11 @@ Remember to obtain the config.yaml file:
 
 
 ```bash
-flightctl login <API_URL> --insecure-skip-tls-verify --web
-flightctl certificate request --signer=enrollment --expiration=365d --output=embedded > config.yaml
+flightctl login --username=<your_user> --password=<your_password> --insecure-skip-tls-verify  https://<rhem_api_server_url>
 
+flightctl certificate request --signer=enrollment --expiration=365d --output=embedded > config.yaml
 ```
+
 
 ## Demo Environment Notes
 
