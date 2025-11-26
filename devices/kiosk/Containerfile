@@ -56,4 +56,3 @@ RUN checkmodule -M -m -o /tmp/my-cockpit.mod /tmp/my-cockpit.te && \
     restorecon -Rv /usr 
 
 #////////////////////////////////////////
-

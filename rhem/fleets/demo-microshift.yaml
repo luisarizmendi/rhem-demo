@@ -52,8 +52,7 @@ spec:
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
-      os:
-        image: ghcr.io/luisarizmendi/device-microshift-kvm:v1
+
 
 
 
