@@ -71,6 +71,13 @@ If you need different credentials for pulling from registry.redhat.io:
    - `SOURCE_REGISTRY_PASSWORD`: Registry password (defaults to `RH_PASSWORD`)
 
 
+### 6. Override other paremeters
+
+1. Go to **Repository Settings** → **Secrets and variables** → **Actions**.
+2. Under **Variables**, add any of these that you want to override:
+   - `BASE_PATH`: devices
+   - `IMAGE_PREFIX`: device
+
 
 ## Local Environment Setup
 

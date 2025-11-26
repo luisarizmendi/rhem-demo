@@ -12,15 +12,6 @@ spec:
       labels:
         fleet: demo-microshift
     spec:
-      applications:
-      - envVars:
-          PGADMIN_MAIL: pgadmin@none.com
-          PGADMIN_PW: pgredhat
-          POSTGRES_DB: postgres
-          POSTGRES_PW: pgadmin
-          POSTGRES_USER: pgredhat
-        image: ghcr.io/luisarizmendi/app-demo-postgres:v1
-        name: postgres
       config:
       - name: acm-crd
         httpRef:
@@ -52,29 +43,17 @@ spec:
               run: kubectl apply -f /var/local/acm-import/import.yaml
               envVars:
                 KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
-      - name: motd-update
-        configType: InlineConfigProviderSpec
-        inline:
-          - path: "/etc/motd"
-            content: "This system is managed by flightctl."
-            mode: 0644
       - gitRef:
           mountPath: /
           path: /configs/site/{{ .metadata.labels.site }}
           repository: rhem-demo
           targetRevision: main
         name: site-conf
-      - gitRef:
-          mountPath: /
-          path: /configs/function/{{ .metadata.labels.function }}
-          repository: rhem-demo
-          targetRevision: main
-        name: function-conf
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: ghcr.io/luisarizmendi/device-demo-kiosk:v2
+        image: ghcr.io/luisarizmendi/device-microshift-kvm:v1
 
 
 
