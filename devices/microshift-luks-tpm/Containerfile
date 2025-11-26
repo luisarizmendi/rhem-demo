@@ -31,9 +31,10 @@ RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms
 
-RUN dnf install -y xz yq podman-plugins inotify-tools firewalld microshift microshift-cert-manager microshift-olm dialog certmonger ipa-client  \
+RUN dnf install -y xz yq podman-plugins inotify-tools firewalld microshift microshift-cert-manager microshift-olm microshift-observability dialog certmonger ipa-client  \
      cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
     systemctl enable microshift && \
+    systemctl enable microshift-observability && \
     systemctl enable cockpit.socket && \
     dnf clean all
 

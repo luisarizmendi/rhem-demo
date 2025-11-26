@@ -74,8 +74,8 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 ## Image Building
 
 This repo uses GitHub Actions to automatically build:
-- **Bootc device images** (`devices/` changes → `ghcr.io/owner/device-demo-*`)
-- **Application images** (`apps/` changes → `ghcr.io/owner/app-demo-*`)
+- **Bootc device images** (`devices/` changes → `ghcr.io/owner/device-*`)
+- **Application images** (`apps/compose` changes → `ghcr.io/owner/app-*`)
 
 Images are built with automatic versioning.
 

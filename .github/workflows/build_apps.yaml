@@ -10,9 +10,22 @@ on:
         description: 'App types to build (comma-separated, leave empty for all changed)'
         required: false
         default: ''
+      apps_directory:
+        description: 'Directory to monitor for changes (e.g., apps or apps/compose)'
+        required: false
+        default: 'apps/compose'
+      image_prefix:
+        description: 'Prefix for container image names'
+        required: false
+        default: 'app'
   push:
     branches:
       - main
+
+env:
+  # Configuration variables - can be overridden by workflow_dispatch inputs
+  APPS_DIRECTORY: ${{ github.event.inputs.apps_directory || 'apps/compose' }}
+  IMAGE_PREFIX: ${{ github.event.inputs.image_prefix || 'app' }}
 
 jobs:
   # Detect changed app types
@@ -22,16 +35,36 @@ jobs:
     outputs:
       app-types: ${{ steps.changes.outputs.app-types }}
       has-changes: ${{ steps.changes.outputs.has-changes }}
+      apps-directory: ${{ steps.changes.outputs.apps-directory }}
+      image-prefix: ${{ steps.changes.outputs.image-prefix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Set configuration
+        id: config
+        run: |
+          APPS_DIR="${{ env.APPS_DIRECTORY }}"
+          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
+          
+          echo "apps-directory=$APPS_DIR" >> $GITHUB_OUTPUT
+          echo "image-prefix=$IMAGE_PREFIX" >> $GITHUB_OUTPUT
+          
+          echo "Using apps directory: $APPS_DIR"
+          echo "Using image prefix: $IMAGE_PREFIX"
+
       - name: Detect changed app types
         id: changes
         run: |
           set -euo pipefail
+          
+          APPS_DIR="${{ env.APPS_DIRECTORY }}"
+          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
+          
+          echo "apps-directory=$APPS_DIR" >> $GITHUB_OUTPUT
+          echo "image-prefix=$IMAGE_PREFIX" >> $GITHUB_OUTPUT
           
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # Manual dispatch with specific types
@@ -41,10 +74,10 @@ jobs:
               echo "Manual dispatch with app types: $APP_TYPES"
             else
               # If no specific types provided, build all available
-              APP_CHANGED_FILES=$(find apps -name "Containerfile" -o -name "containerfile" 2>/dev/null | head -20 || echo "")
+              APP_CHANGED_FILES=$(find "$APPS_DIR" -name "Containerfile" -o -name "containerfile" 2>/dev/null | head -20 || echo "")
               
               if [ -n "$APP_CHANGED_FILES" ]; then
-                APP_TYPES=$(echo "$APP_CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$//')
+                APP_TYPES=$(echo "$APP_CHANGED_FILES" | grep -E "^${APPS_DIR}/[^/]+/" | sed "s|^${APPS_DIR}/\([^/]*\)/.*|\1|" | sort -u | tr '\n' ',' | sed 's/,$//')
               fi
             fi
           else
@@ -60,13 +93,13 @@ jobs:
             echo "Changed files:"
             echo "$CHANGED_FILES"
             
-            # Extract unique app types from changed files in apps/ directory
+            # Extract unique app types from changed files in configured directory
             # Only include types that currently exist in the repository
-            if echo "$CHANGED_FILES" | grep -q '^apps/[^/]\+/'; then
-              POTENTIAL_APP_TYPES=$(echo "$CHANGED_FILES" | grep -E '^apps/[^/]+/' | sed 's|^apps/\([^/]*\)/.*|\1|' | sort -u)
+            if echo "$CHANGED_FILES" | grep -q "^${APPS_DIR}/[^/]\+/"; then
+              POTENTIAL_APP_TYPES=$(echo "$CHANGED_FILES" | grep -E "^${APPS_DIR}/[^/]+/" | sed "s|^${APPS_DIR}/\([^/]*\)/.*|\1|" | sort -u)
               APP_TYPES=""
               for TYPE in $POTENTIAL_APP_TYPES; do
-                if [ -d "apps/$TYPE" ] && ([ -f "apps/$TYPE/Containerfile" ] || [ -f "apps/$TYPE/containerfile" ]); then
+                if [ -d "${APPS_DIR}/$TYPE" ] && ([ -f "${APPS_DIR}/$TYPE/Containerfile" ] || [ -f "${APPS_DIR}/$TYPE/containerfile" ]); then
                   if [ -z "$APP_TYPES" ]; then
                     APP_TYPES="$TYPE"
                   else
@@ -95,17 +128,19 @@ jobs:
 
       - name: Validate app types
         run: |
+          APPS_DIR="${{ env.APPS_DIRECTORY }}"
+          
           if [ "${{ steps.changes.outputs.has-changes }}" = "true" ]; then
             # Validate app types (should all exist now since we filtered above)
             if [ -n "${{ steps.changes.outputs.app-types }}" ]; then
               IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.app-types }}"
               for TYPE in "${TYPES[@]}"; do
-                if [ ! -d "apps/$TYPE" ]; then
-                  echo "Error: apps/$TYPE directory does not exist"
+                if [ ! -d "${APPS_DIR}/$TYPE" ]; then
+                  echo "Error: ${APPS_DIR}/$TYPE directory does not exist"
                   exit 1
                 fi
-                if [ ! -f "apps/$TYPE/Containerfile" ] && [ ! -f "apps/$TYPE/containerfile" ]; then
-                  echo "Error: No Containerfile found in apps/$TYPE"
+                if [ ! -f "${APPS_DIR}/$TYPE/Containerfile" ] && [ ! -f "${APPS_DIR}/$TYPE/containerfile" ]; then
+                  echo "Error: No Containerfile found in ${APPS_DIR}/$TYPE"
                   exit 1
                 fi
               done
@@ -136,6 +171,8 @@ jobs:
         run: |
           set -euo pipefail
           
+          IMAGE_PREFIX="${{ needs.detect-changes.outputs.image-prefix }}"
+          
           # Initialize versions JSON object
           APP_VERSIONS_JSON='{'
           APP_FIRST=true
@@ -145,7 +182,7 @@ jobs:
             IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
             
             for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="app-demo-${APP_TYPE}"
+              IMAGE_NAME="${IMAGE_PREFIX}-${APP_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               
               echo "Determining version for app type: $APP_TYPE"
@@ -199,6 +236,8 @@ jobs:
       matrix: ${{ steps.setup.outputs.matrix }}
       app-types: ${{ needs.detect-changes.outputs.app-types }}
       app-versions: ${{ needs.determine-versions.outputs.app-versions }}
+      apps-directory: ${{ needs.detect-changes.outputs.apps-directory }}
+      image-prefix: ${{ needs.detect-changes.outputs.image-prefix }}
     steps:
       - name: Setup build parameters
         id: setup
@@ -260,8 +299,9 @@ jobs:
       image: ${{ steps.build.outputs.image }}
       tags: ${{ steps.build.outputs.tags }}
     env:
-      IMAGE_NAME: app-demo-${{ matrix.type }}
+      IMAGE_NAME: ${{ needs.setup.outputs.image-prefix }}-${{ matrix.type }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
+      APPS_DIRECTORY: ${{ needs.setup.outputs.apps-directory }}
       # Disable Subscription Manager container passthrough
       SMDEV_CONTAINER_OFF: 1
       # Source registry for base image
@@ -300,14 +340,15 @@ jobs:
 
       - name: Verify Containerfile exists
         run: |
+          APPS_DIR="${{ env.APPS_DIRECTORY }}"
           CONTAINERFILE_PATH=""
           
-          if [ -f "apps/${{ matrix.type }}/Containerfile" ]; then
-            CONTAINERFILE_PATH="apps/${{ matrix.type }}/Containerfile"
-          elif [ -f "apps/${{ matrix.type }}/containerfile" ]; then
-            CONTAINERFILE_PATH="apps/${{ matrix.type }}/containerfile"
+          if [ -f "${APPS_DIR}/${{ matrix.type }}/Containerfile" ]; then
+            CONTAINERFILE_PATH="${APPS_DIR}/${{ matrix.type }}/Containerfile"
+          elif [ -f "${APPS_DIR}/${{ matrix.type }}/containerfile" ]; then
+            CONTAINERFILE_PATH="${APPS_DIR}/${{ matrix.type }}/containerfile"
           else
-            echo "Error: No Containerfile found in apps/${{ matrix.type }}"
+            echo "Error: No Containerfile found in ${APPS_DIR}/${{ matrix.type }}"
             exit 1
           fi
           echo "CONTAINERFILE_PATH=$CONTAINERFILE_PATH" >> $GITHUB_ENV
@@ -354,7 +395,7 @@ jobs:
             ${{ steps.version.outputs.version }}-${{ matrix.arch }}
             ${{ steps.arch-tag.outputs.arch-tag }}
           platforms: ${{ matrix.platform }}
-          context: apps/${{ matrix.type }}
+          context: ${{ env.APPS_DIRECTORY }}/${{ matrix.type }}
           containerfiles: |
             ${{ env.CONTAINERFILE_PATH }}
 
@@ -385,6 +426,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}
+      IMAGE_PREFIX: ${{ needs.setup.outputs.image-prefix }}
     steps:
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
@@ -397,13 +439,15 @@ jobs:
         run: |
           set -euo pipefail
           
+          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
+          
           # Process app types
           if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
             IFS=',' read -ra APP_ARRAY <<< "${{ needs.setup.outputs.app-types }}"
             APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
             
             for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="app-demo-${APP_TYPE}"
+              IMAGE_NAME="${IMAGE_PREFIX}-${APP_TYPE}"
               IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
               LATEST_MANIFEST="${IMAGE_BASE}:latest"
               SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
@@ -483,7 +527,15 @@ jobs:
       - name: Print build summary
         if: needs.detect-changes.outputs.has-changes == 'true'
         run: |
+          IMAGE_PREFIX="${{ needs.detect-changes.outputs.image-prefix }}"
+          APPS_DIR="${{ needs.detect-changes.outputs.apps-directory }}"
+          
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Apps Directory: \`$APPS_DIR\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image Prefix: \`$IMAGE_PREFIX\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "### App Types Built" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
             echo "- App Types: ${{ needs.setup.outputs.app-types }}" >> $GITHUB_STEP_SUMMARY
@@ -501,9 +553,9 @@ jobs:
             for APP_TYPE in "${APP_ARRAY[@]}"; do
               VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
               echo "#### App Type: $APP_TYPE" >> $GITHUB_STEP_SUMMARY
-              echo "- Latest: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-              echo "- SHA: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-              echo "- Version: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+              echo "- Latest: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
+              echo "- SHA: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              echo "- Version: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               
               echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
@@ -518,10 +570,10 @@ jobs:
                 else
                   ARCH_TAG="$ARCH"
                 fi
-                echo "- $ARCH latest: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH SHA: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH version: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH specific: ${{ env.REGISTRY }}/app-demo-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH latest: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH SHA: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH version: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+                echo "- $ARCH specific: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
               done
               echo "" >> $GITHUB_STEP_SUMMARY
             done
@@ -537,25 +589,27 @@ jobs:
       - name: Print no changes message
         if: needs.detect-changes.outputs.has-changes == 'false'
         run: |
+          APPS_DIR="${{ needs.detect-changes.outputs.apps-directory }}"
+          
           echo "## No Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "No changes were detected in any app type directories under \`apps/\`." >> $GITHUB_STEP_SUMMARY
+          echo "No changes were detected in any app type directories under \`$APPS_DIR/\`." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Available App Types" >> $GITHUB_STEP_SUMMARY
           
-          if [ -d "apps" ]; then
-            for dir in apps/*/; do
+          if [ -d "$APPS_DIR" ]; then
+            for dir in ${APPS_DIR}/*/; do
               if [ -d "$dir" ]; then
                 app_name=$(basename "$dir")
                 echo "- \`$app_name\`" >> $GITHUB_STEP_SUMMARY
               fi
             done
           else
-            echo "No apps directory found." >> $GITHUB_STEP_SUMMARY
+            echo "No $APPS_DIR directory found." >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
           echo "**To trigger a build:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Make changes to files in any \`apps/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
+          echo "- Make changes to files in any \`${APPS_DIR}/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
           echo "- Run workflow manually and specify app types to build" >> $GITHUB_STEP_SUMMARY
 
       - name: Checkout for no-changes summary

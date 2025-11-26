@@ -150,14 +150,14 @@ When to Use Runtime Configuration:
 1. **Show application definition**:
    ```bash
    # Show compose file and how it's packaged
-   cat apps/postgres/compose.yaml
-   cat apps/postgres/Containerfile
+   cat apps/compose/postgres/compose.yaml
+   cat apps/compose/postgres/Containerfile
    ```
 
 2. **Deploy application (v1)**:
    - Open device in RHEM UI
    - Configure application:
-     - Image: `ghcr.io/luisarizmendi/app-demo-postgres:v1`
+     - Image: `ghcr.io/luisarizmendi/app-postgres:v1`
      - Environment variables:
        ```
        POSTGRES_USER=postgres
@@ -188,7 +188,7 @@ When to Use Runtime Configuration:
 
 5. **Demonstrate upgrade to v2**:
    - Edit device application configuration
-   - Change image to: `app-demo-postgres:v2`
+   - Change image to: `app-postgres:v2`
    - **Wait time**: ~2 minutes for upgrade
    - Login to pgAdmin again, show version 9.6
 
