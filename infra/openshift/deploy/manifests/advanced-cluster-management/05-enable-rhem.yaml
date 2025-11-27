@@ -34,11 +34,11 @@ spec:
           kind: Job
           metadata:
             name: enable-plugin-rhem-plugin
-            namespace: openshift-admin
+            namespace: openshift-gitops
           spec:
             template:
               spec:
-                serviceAccountName: openshift-admin-privileged
+                serviceAccountName: openshift-gitops-argocd-application-controller
                 containers:
                 - name: shell
                   image: quay.io/luisarizmendi/ocp-job:latest  
