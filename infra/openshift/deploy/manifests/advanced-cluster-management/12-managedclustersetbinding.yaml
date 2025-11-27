@@ -18,7 +18,7 @@ metadata:
   namespace: store-clusters
 spec:
   clusterSet: store-pos
-  
+
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
@@ -27,6 +27,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: stores
-  namespace: openshift-gitops
+  namespace: store-clusters
 spec:
   clusterSet: store-infra
