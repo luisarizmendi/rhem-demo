@@ -5,7 +5,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "11"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: pos
+  name: store-pos
 spec: {}
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta2
@@ -14,5 +14,5 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "11"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: storeinfra
+  name: store-infra
 spec: {}
