@@ -1,0 +1,26 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: stores-placement
+spec:
+  clusterSets:
+    - pos
+    - infra
+  numberOfClusters: 1
+  predicates:
+    - requiredClusterSelector:
+        claimSelector:
+          matchExpressions:
+            - key: device.status
+              operator: In
+              values:
+                - enabled
+#  prioritizerPolicy:
+#    configurations:
+#      - scoreCoordinate:
+#          builtIn: ResourceAllocatableCPU
+#        weight: 2
+#      - scoreCoordinate:
+#          builtIn: ResourceAllocatableMemory
+#        weight: 2
