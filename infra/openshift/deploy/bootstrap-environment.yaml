@@ -168,12 +168,6 @@ spec:
                   automated:
                     prune: false
                     selfHeal: true
-                    retry:
-                      limit: 15
-                      backoff:
-                        duration: 5s
-                        factor: 2
-                        maxDuration: 3m
                   syncOptions:
                     - RespectIgnoreDifferences=true 
                 ignoreDifferences:
