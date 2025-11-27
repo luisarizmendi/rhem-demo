@@ -10,7 +10,7 @@ metadata:
 spec:
   clusterSets:
     - pos
-    - infra
+    - storeinfra
   numberOfClusters: 1
   predicates:
     - requiredClusterSelector:
