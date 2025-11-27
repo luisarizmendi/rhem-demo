@@ -135,7 +135,7 @@ spec:
                     seccompProfile:
                       type: RuntimeDefault
                 restartPolicy: Never
-            backoffLimit: 1
+            backoffLimit: 10
           EOF
 
           oc apply -f - <<EOF

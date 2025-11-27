@@ -37,8 +37,8 @@ spec:
 
             USER="acm"
             PASSWORD="R3dh4t1!"
-            POLICY_FILE="/tmp/{USER}-policy.json"
-            BUCKET_NAME="{USER}-observability"
+            POLICY_FILE="/tmp/${USER}-policy.json"
+            BUCKET_NAME="${USER}-observability"
 
 
             echo "Creating user: $USER with password: $PASSWORD"

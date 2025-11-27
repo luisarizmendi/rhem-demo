@@ -1,0 +1,27 @@
+[Unit]
+Description=Flight Control Database Migration service
+PartOf=flightctl.target
+After=flightctl-db-wait.service flightctl-db-users-init.service
+Wants=flightctl-db-wait.service flightctl-db-users-init.service 
+
+[Container]
+ContainerName=flightctl-db-migrate
+Image=quay.io/flightctl/flightctl-db-setup:0.10.0
+Network=flightctl.network
+AutoUpdate=none
+Environment=DB_MIGRATION_USER=flightctl_migrator
+Secret=flightctl-postgresql-migrator-password,type=env,target=DB_PASSWORD
+Secret=flightctl-postgresql-migrator-password,type=env,target=DB_MIGRATION_PASSWORD
+Volume=/etc/flightctl/flightctl-api/config.yaml:/root/.flightctl/config.yaml:ro,z
+Volume=/etc/flightctl/service-config.yaml:/etc/flightctl/service-config.yaml:ro,z
+Exec=/usr/local/bin/flightctl-db-migrate
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=10m
+
+[Install]
+WantedBy=flightctl.target
