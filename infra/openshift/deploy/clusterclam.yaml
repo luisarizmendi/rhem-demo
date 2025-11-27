@@ -3,4 +3,4 @@ kind: ClusterClaim
 metadata:
   name: device.status
 spec:
-  value: enabled
+  value: disabled

@@ -2,7 +2,7 @@
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
-  name: store-placement
+  name: stores
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "5"
