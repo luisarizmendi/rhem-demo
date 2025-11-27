@@ -17,9 +17,9 @@ spec:
         claimSelector:
           matchExpressions:
             - key: device.status
-              operator: In
+              operator: NotIn
               values:
-                - enabled
+                - disabled
 #  prioritizerPolicy:
 #    configurations:
 #      - scoreCoordinate:
