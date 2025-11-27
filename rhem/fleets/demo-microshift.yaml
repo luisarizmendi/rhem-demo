@@ -52,8 +52,9 @@ spec:
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
+          - "microshift.service"
+          - "microshift-observability.service"
           - "libvirt-vm*.service"
-          - "microshift*.service"
 
 
 

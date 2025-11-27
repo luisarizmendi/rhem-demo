@@ -12,104 +12,104 @@ receivers:
       auth_type: kubeConfig
   k8s_events:
     auth_type: kubeConfig
-hostmetrics:
-  scrapers:
-    system:
-      metrics:
-        system.uptime:
-          enabled: true
-    cpu:
-      metrics:
-        system.cpu.frequency:
-          enabled: true
-        system.cpu.logical.count:
-          enabled: true
-        system.cpu.physical.count:
-          enabled: true
-        system.cpu.time:
-          enabled: true
-        system.cpu.utilization:
-          enabled: true
-    memory:
-      metrics:
-        system.linux.memory.available:
-          enabled: true
-        system.linux.memory.dirty:
-          enabled: true
-        system.memory.limit:
-          enabled: true
-        system.memory.page_size:
-          enabled: true
-        system.memory.usage:
-          enabled: true
-        system.memory.utilization:
-          enabled: true
-    network:
-      exclude:
-        match_type: regexp
-        interfaces:
-          - veth.*
-          - '[a-f0-9]{15}'
-          - enP.*
-          - ovn-k8s-mp[0-9]*
-          - br-ex
-          - br-int
-          - br-ext
-          - br[0-9]*
-          - tun[0-9]*
-          - cali[a-f0-9]*
-      metrics:
-        system.network.connections:
-          enabled: true
-        system.network.conntrack.count:
-          enabled: true
-        system.network.conntrack.max:
-          enabled: true
-        system.network.dropped:
-          enabled: true
-        system.network.errors:
-          enabled: true
-        system.network.io:
-          enabled: true
-        system.network.packets:
-          enabled: true
-    disk:
-      exclude:
-        match_type: regexp
-        devices:
-        - sr.*
-        - dm-.*
-        - loop.*
-        - fd.*
-      metrics:
-        system.disk.io:
-          enabled: true
-        system.disk.io_time:
-          enabled: true
-        system.disk.merged:
-          enabled: true
-        system.disk.operation_time:
-          enabled: true
-        system.disk.operations:
-          enabled: true
-        system.disk.pending_operations:
-          enabled: true
-        system.disk.weighted_io_time:
-          enabled: true
-    filesystem:
-      metrics:
-        system.filesystem.inodes.usage:
-          enabled: true
-        system.filesystem.usage:
-          enabled: true
-        system.filesystem.utilization:
-          enabled: true
-    processes:
-      metrics:
-        system.processes.count:
-          enabled: true
-        system.processes.created:
-          enabled: true
+  hostmetrics:
+    scrapers:
+      system:
+        metrics:
+          system.uptime:
+            enabled: true
+      cpu:
+        metrics:
+          system.cpu.frequency:
+            enabled: true
+          system.cpu.logical.count:
+            enabled: true
+          system.cpu.physical.count:
+            enabled: true
+          system.cpu.time:
+            enabled: true
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.linux.memory.available:
+            enabled: true
+          system.linux.memory.dirty:
+            enabled: true
+          system.memory.limit:
+            enabled: true
+          system.memory.page_size:
+            enabled: true
+          system.memory.usage:
+            enabled: true
+          system.memory.utilization:
+            enabled: true
+      network:
+        exclude:
+          match_type: regexp
+          interfaces:
+            - veth.*
+            - '[a-f0-9]{15}'
+            - enP.*
+            - ovn-k8s-mp[0-9]*
+            - br-ex
+            - br-int
+            - br-ext
+            - br[0-9]*
+            - tun[0-9]*
+            - cali[a-f0-9]*
+        metrics:
+          system.network.connections:
+            enabled: true
+          system.network.conntrack.count:
+            enabled: true
+          system.network.conntrack.max:
+            enabled: true
+          system.network.dropped:
+            enabled: true
+          system.network.errors:
+            enabled: true
+          system.network.io:
+            enabled: true
+          system.network.packets:
+            enabled: true
+      disk:
+        exclude:
+          match_type: regexp
+          devices:
+          - sr.*
+          - dm-.*
+          - loop.*
+          - fd.*
+        metrics:
+          system.disk.io:
+            enabled: true
+          system.disk.io_time:
+            enabled: true
+          system.disk.merged:
+            enabled: true
+          system.disk.operation_time:
+            enabled: true
+          system.disk.operations:
+            enabled: true
+          system.disk.pending_operations:
+            enabled: true
+          system.disk.weighted_io_time:
+            enabled: true
+      filesystem:
+        metrics:
+          system.filesystem.inodes.usage:
+            enabled: true
+          system.filesystem.usage:
+            enabled: true
+          system.filesystem.utilization:
+            enabled: true
+      processes:
+        metrics:
+          system.processes.count:
+            enabled: true
+          system.processes.created:
+            enabled: true
   journald:
     units:
       - microshift
