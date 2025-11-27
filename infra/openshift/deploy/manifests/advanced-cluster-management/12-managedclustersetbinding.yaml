@@ -14,7 +14,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: stores
+  name: store-pos-store-clusters
   namespace: store-clusters
 spec:
   clusterSet: store-pos
@@ -26,7 +26,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: stores
+  name: store-infra-store-clusters
   namespace: store-clusters
 spec:
   clusterSet: store-infra
