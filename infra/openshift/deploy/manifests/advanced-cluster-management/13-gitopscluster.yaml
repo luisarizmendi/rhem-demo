@@ -3,13 +3,13 @@ apiVersion: apps.open-cluster-management.io/v1beta1
 kind: GitOpsCluster
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: openshift-gitops
+  name: store-clusters
   namespace: openshift-gitops
 spec:
   argoServer:
-    cluster: local-cluster
+    cluster: local-clusters
     argoNamespace: openshift-gitops
   placementRef:
     kind: Placement
@@ -21,7 +21,7 @@ apiVersion: apps.open-cluster-management.io/v1beta1
 kind: GitOpsCluster
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: global-gitops-clusters
   namespace: open-cluster-management-global-set

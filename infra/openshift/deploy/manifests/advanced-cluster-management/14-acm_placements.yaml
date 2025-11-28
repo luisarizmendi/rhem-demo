@@ -3,15 +3,15 @@ apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
   name: stores
-  namespace: openshift-gitops
+  namespace: open-cluster-management-global-set
   annotations:
-    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-wave: "14"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
     - store-pos
     - store-infra
-  numberOfClusters: 1
+#  numberOfClusters: 1
 #  predicates:
 #    - requiredClusterSelector:
 #        claimSelector:
