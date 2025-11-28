@@ -1,9 +1,9 @@
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta1
-kind: Placement
+kind: GitOpsCluster
 metadata:
   name: stores
-  namespace: open-cluster-management-global-set
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "14"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
