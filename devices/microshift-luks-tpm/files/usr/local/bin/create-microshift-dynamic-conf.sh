@@ -89,3 +89,4 @@ while [ ! -f "/var/lib/microshift/resources/kubeadmin/kubeconfig" ]; do
 done
 
 cp /var/lib/microshift/resources/kubeadmin/kubeconfig /root/.kube/config
+
