@@ -31,7 +31,8 @@ RUN dnf config-manager \
 
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
-        --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms
+        --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
+        --set-enabled gitops-1.16-for-rhel-9-$(uname -m)-rpms
 
 RUN dnf install -y xz yq podman-plugins inotify-tools firewalld microshift microshift-cert-manager microshift-olm microshift-observability microshift-gitops dialog \
      shadow-utils guestfs-tools libvirt-daemon-config-network libvirt-daemon-kvm qemu-kvm qemu-img libvirt virt-install virt-viewer libguestfs-tools python3-libguestfs virt-top \
