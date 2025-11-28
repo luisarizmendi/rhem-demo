@@ -14,7 +14,7 @@ spec:
   placementRef:
     kind: Placement
     apiVersion: cluster.open-cluster-management.io/v1beta1
-    name: stores-git
+    name: stores
     namespace: store-clusters
 #---
 #apiVersion: apps.open-cluster-management.io/v1beta1
