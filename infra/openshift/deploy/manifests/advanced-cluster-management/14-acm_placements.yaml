@@ -10,6 +10,36 @@ metadata:
 spec:
   clusterSets:
     - store-pos
+#  numberOfClusters: 1
+#  predicates:
+#    - requiredClusterSelector:
+#        claimSelector:
+#          matchExpressions:
+#            - key: device.status
+#              operator: NotIn
+#              values:
+#                - disabled
+#  prioritizerPolicy:
+#    configurations:
+#      - scoreCoordinate:
+#          builtIn: ResourceAllocatableCPU
+#        weight: 2
+#      - scoreCoordinate:
+#          builtIn: ResourceAllocatableMemory
+#        weight: 2
+
+
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: GitOpsCluster
+metadata:
+  name: stores
+  namespace: stores
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterSets:
     - store-infra
 #  numberOfClusters: 1
 #  predicates:
