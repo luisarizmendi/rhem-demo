@@ -55,4 +55,4 @@ spec:
     kind: Placement
     apiVersion: cluster.open-cluster-management.io/v1beta1
     name: stores
-    namespace: stores
+    namespace: store-clusters
