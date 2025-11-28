@@ -15,7 +15,7 @@ spec:
     kind: Placement
     apiVersion: cluster.open-cluster-management.io/v1beta1
     name: stores
-    namespace: store-clusters
+    namespace: openshift-gitops
 #---
 #apiVersion: apps.open-cluster-management.io/v1beta1
 #kind: GitOpsCluster
