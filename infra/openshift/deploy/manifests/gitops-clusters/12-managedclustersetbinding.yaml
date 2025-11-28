@@ -49,7 +49,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: store-infra
+  name: openshift-gitops
   namespace: store-clusters
 spec:
-  clusterSet: openshift-gitops
+  clusterSet: store-infra
