@@ -54,6 +54,49 @@ spec:
         automated:
           prune: true
           selfHeal: true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -76,8 +119,8 @@ spec:
     metadata:
       name: '{{.name}}-pos'
       labels:
-        app: pos
-        clusterset: store-pos
+        function: pos
+        clusterset: stores
     spec:
       destination:
         namespace: pos
@@ -116,8 +159,8 @@ spec:
     metadata:
       name: '{{.name}}-infra'
       labels:
-        app: infra
-        clusterset: store-infra
+        function: infra
+        clusterset: stores
     spec:
       destination:
         namespace: infra

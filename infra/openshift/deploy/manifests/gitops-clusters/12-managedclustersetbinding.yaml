@@ -15,10 +15,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: store-pos
+  name: stores
   namespace: store-clusters
 spec:
-  clusterSet: store-pos
+  clusterSet: stores
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
@@ -26,30 +26,8 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: store-infra
-  namespace: store-clusters
+  name: stores
+  namespace: openshift-gitops
 spec:
-  clusterSet: store-infra
+  clusterSet: stores
 
----
-apiVersion: cluster.open-cluster-management.io/v1beta2
-kind: ManagedClusterSetBinding
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "12"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: store-pos
-  namespace: openshift-gitops
-spec:
-  clusterSet: store-pos
----
-apiVersion: cluster.open-cluster-management.io/v1beta2
-kind: ManagedClusterSetBinding
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "12"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: store-infra
-  namespace: openshift-gitops
-spec:
-  clusterSet: store-infra

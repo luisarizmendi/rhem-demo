@@ -9,8 +9,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
-    - store-pos
-    - store-infra
+    - stores
 #  numberOfClusters: 1
 #  predicates:
 #    - requiredClusterSelector:
