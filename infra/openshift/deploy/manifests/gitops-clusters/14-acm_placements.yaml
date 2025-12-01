@@ -34,6 +34,9 @@ kind: Placement
 metadata:
   name: stores-pos
   namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
     - stores
@@ -48,6 +51,9 @@ kind: Placement
 metadata:
   name: stores-infra
   namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
     - stores
