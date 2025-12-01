@@ -54,49 +54,6 @@ spec:
         automated:
           prune: true
           selfHeal: true
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -112,7 +69,7 @@ spec:
         configMapRef: acm-placement
         labelSelector:
           matchLabels:
-            cluster.open-cluster-management.io/placement: stores
+            cluster.open-cluster-management.io/placement: stores-pos
         requeueAfterSeconds: 180
   goTemplate: true
   template:
@@ -152,7 +109,7 @@ spec:
         configMapRef: acm-placement
         labelSelector:
           matchLabels:
-            cluster.open-cluster-management.io/placement: stores
+            cluster.open-cluster-management.io/placement: stores-infra
         requeueAfterSeconds: 180
   goTemplate: true
   template:
