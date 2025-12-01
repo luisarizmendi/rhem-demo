@@ -53,7 +53,6 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
           - "microshift.service"
-          - "microshift-observability.service"
           - "libvirt-vm*.service"
 
 
