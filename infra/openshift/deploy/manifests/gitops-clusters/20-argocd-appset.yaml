@@ -2,8 +2,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   labels:
-    app.kubernetes.io/managed-by: stores-global
-  name: stores-global
+    app.kubernetes.io/managed-by: stores-apps-helm-global
+  name: stores-apps-helm-global
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -14,7 +14,7 @@ spec:
         generators:
           - git:
               directories:
-                - path: apps/k8s/*
+                - path: apps/k8s/helm/*
               repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
               revision: main
           - clusterDecisionResource:
@@ -29,8 +29,8 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/managed-by: stores-global
-      name: '{{.path.basename}}-{{.name}}'
+        app.kubernetes.io/managed-by: stores-apps-helm-global
+      name: '{{.name}}-{{.path.basename}}'
     spec:
       destination:
         namespace: '{{.path.basename}}'
@@ -40,7 +40,8 @@ spec:
         helm:
           valueFiles:
             - values.yaml
-            - environment/values-{{.name}}.yaml
+            - 'environment/function/values-{{index .clusterLabels "function"}}.yaml'
+            - 'environment/site/values-{{index .clusterLabels "site"}}.yaml'
         path: '{{.path.path}}'
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
         targetRevision: main
@@ -48,3 +49,82 @@ spec:
         automated:
           prune: true
           selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: stores-app-pos
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  generators:
+    - clusterDecisionResource:
+        configMapRef: acm-placement
+        labelSelector:
+          matchLabels:
+            cluster.open-cluster-management.io/placement: stores
+        requeueAfterSeconds: 180
+  goTemplate: true
+  template:
+    metadata:
+      name: '{{.name}}-pos'
+      labels:
+        app: pos
+        clusterset: store-pos
+    spec:
+      destination:
+        namespace: pos
+        server: '{{.server}}'
+      project: stores
+      source:
+        path: apps/k8s/manifests/tailwind-pos
+        repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
+        targetRevision: main
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: stores-app-infra
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  generators:
+    - clusterDecisionResource:
+        configMapRef: acm-placement
+        labelSelector:
+          matchLabels:
+            cluster.open-cluster-management.io/placement: stores
+        requeueAfterSeconds: 180
+  goTemplate: true
+  template:
+    metadata:
+      name: '{{.name}}-infra'
+      labels:
+        app: infra
+        clusterset: store-infra
+    spec:
+      destination:
+        namespace: infra
+        server: '{{.server}}'
+      project: stores
+      source:
+        path: apps/k8s/manifests/http-server-upload
+        repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
+        targetRevision: main
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
