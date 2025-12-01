@@ -1,6 +1,0 @@
----
-global:
-  cluster: edge-1
-  environment: Edge
-
-
