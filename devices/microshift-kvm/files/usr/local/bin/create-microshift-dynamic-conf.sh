@@ -73,13 +73,6 @@ echo "$IP" > "$IP_CACHE_FILE"
 
 
 #############################################
-# Restart MicroShift
-#############################################
-systemctl restart microshift
-
-echo "Configuration updated successfully"
-
-#############################################
 # Update kubeconfig
 #############################################
 mkdir -p /root/.kube
@@ -88,4 +81,16 @@ while [ ! -f "/var/lib/microshift/resources/kubeadmin/kubeconfig" ]; do
     sleep 1
 done
 
-cp /var/lib/microshift/resources/kubeadmin/kubeconfig /root/.kube/config
+echo "Creating root kubeconfig"
+ln -sfn /var/lib/microshift/resources/kubeadmin/kubeconfig /root/.kube/config
+
+
+#############################################
+# Restart MicroShift
+#############################################
+systemctl restart microshift
+
+echo "Configuration updated successfully"
+
+
+
