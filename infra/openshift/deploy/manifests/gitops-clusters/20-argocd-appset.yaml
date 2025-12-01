@@ -40,8 +40,8 @@ spec:
         helm:
           valueFiles:
             - values.yaml
-            - 'environment/function/values-{{index .clusterLabels "function"}}.yaml'
-            - 'environment/site/values-{{index .clusterLabels "site"}}.yaml'
+            - 'environment/function/values-{{index .values.clusterLabels "function"}}.yaml'
+            - 'environment/site/values-{{index .values.clusterLabels "site"}}.yaml'
         path: '{{.path.path}}'
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
         targetRevision: main
