@@ -2,15 +2,15 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels: {}
-  name: demo
+  name: rhel
 spec:
   selector:
     matchLabels:
-      fleet: "demo"
+      fleet: "rhel"
   template:
     metadata:
       labels:
-        fleet: demo
+        fleet: rhel
     spec:
       applications:
       - envVars:
