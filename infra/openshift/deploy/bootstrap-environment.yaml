@@ -153,8 +153,8 @@ spec:
                 revision: main
                 directories:
                   - path: infra/openshift/deploy/manifests/*
-                - path: infra/openshift/deploy/manifests/observability
-                  exclude: true
+                  - path: infra/openshift/deploy/manifests/observability
+                    exclude: true
             template:
               metadata:
                 name: '{{.path.basename}}'
