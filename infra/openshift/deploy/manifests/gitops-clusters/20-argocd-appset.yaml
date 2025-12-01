@@ -17,12 +17,17 @@ spec:
                 - path: apps/k8s/helm/*
               repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
               revision: main
-          - clusterDecisionResource:
-              configMapRef: acm-placement
-              labelSelector:
-                matchLabels:
-                  cluster.open-cluster-management.io/placement: stores
-              requeueAfterSeconds: 180
+          - merge:
+              mergeKeys:
+                - server
+              generators:
+                - clusterDecisionResource:
+                    configMapRef: acm-placement
+                    labelSelector:
+                      matchLabels:
+                        cluster.open-cluster-management.io/placement: stores
+                    requeueAfterSeconds: 180
+                - clusters: {}
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -40,8 +45,8 @@ spec:
         helm:
           valueFiles:
             - values.yaml
-            - 'environment/function/values-{{.function}}.yaml'
-            - 'environment/site/values-{{.site}}.yaml'
+            - 'environment/function/values-{{index .metadata.labels "function"}}.yaml'
+            - 'environment/site/values-{{index .metadata.labels "site"}}.yaml'
         path: '{{.path.path}}'
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
         targetRevision: main
