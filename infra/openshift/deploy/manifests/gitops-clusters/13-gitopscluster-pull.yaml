@@ -1,0 +1,25 @@
+---
+apiVersion: apps.open-cluster-management.io/v1beta1
+kind: GitOpsCluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: store-clusters
+  namespace: store-clusters
+spec:
+  argoServer:
+    cluster: local-cluster
+    argoNamespace: openshift-gitops
+  placementRef:
+    kind: Placement
+    apiVersion: cluster.open-cluster-management.io/v1beta1
+    name: stores
+    namespace: store-clusters
+  createBlankClusterSecrets: true 
+
+
+
+
+
+

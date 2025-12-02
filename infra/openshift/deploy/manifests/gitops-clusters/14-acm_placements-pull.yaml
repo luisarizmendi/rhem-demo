@@ -1,0 +1,46 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: stores
+  namespace: store-clusters
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterSets:
+    - stores
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: stores-pos
+  namespace: store-clusters
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterSets:
+    - stores
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            function: pos
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: stores-infra
+  namespace: store-clusters
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterSets:
+    - stores
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            function: infra

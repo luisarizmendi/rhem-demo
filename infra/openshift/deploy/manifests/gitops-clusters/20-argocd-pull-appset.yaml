@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  namespace: openshift-gitops
+  namespace: store-clusters
 spec:
   generators:
     - matrix:
@@ -35,7 +35,7 @@ spec:
     metadata:
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -64,7 +64,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-pos-pull
-  namespace: openshift-gitops
+  namespace: store-clusters
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -82,7 +82,7 @@ spec:
       name: '{{.name}}-pos'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -109,7 +109,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-infra-pull
-  namespace: openshift-gitops
+  namespace: store-clusters
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -127,7 +127,7 @@ spec:
       name: '{{.name}}-infra'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
