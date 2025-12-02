@@ -6,7 +6,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: stores
-  namespace: stores
+  namespace: openshift-gitops
 spec:
   argoServer:
     cluster: local-cluster
@@ -15,43 +15,8 @@ spec:
     kind: Placement
     apiVersion: cluster.open-cluster-management.io/v1beta1
     name: stores
-    namespace: stores
----
-apiVersion: apps.open-cluster-management.io/v1beta1
-kind: GitOpsCluster
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "13"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: stores-poc
-  namespace: stores
-spec:
-  argoServer:
-    cluster: local-cluster
-    argoNamespace: openshift-gitops
-  placementRef:
-    kind: Placement
-    apiVersion: cluster.open-cluster-management.io/v1beta1
-    name: stores-poc
-    namespace: stores
----
-apiVersion: apps.open-cluster-management.io/v1beta1
-kind: GitOpsCluster
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "13"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: stores-infra
-  namespace: stores
-spec:
-  argoServer:
-    cluster: local-cluster
-    argoNamespace: openshift-gitops
-  placementRef:
-    kind: Placement
-    apiVersion: cluster.open-cluster-management.io/v1beta1
-    name: stores-infra
-    namespace: stores
+    namespace: openshift-gitops
+
 #---
 #apiVersion: apps.open-cluster-management.io/v1beta1
 #kind: GitOpsCluster
