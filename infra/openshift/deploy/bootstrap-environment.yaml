@@ -153,7 +153,7 @@ spec:
                 revision: main
                 directories:
                   - path: infra/openshift/deploy/manifests/*
-                  - path: infra/openshift/deploy/manifests/gitopscluster-pull
+                  - path: infra/openshift/deploy/manifests/gitops-clusters-pull
                     exclude: true
             template:
               metadata:
