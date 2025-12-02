@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  namespace: store-clusters
+  namespace: store-clusters-pull
 spec:
   generators:
     - matrix:
@@ -35,7 +35,7 @@ spec:
     metadata:
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -45,7 +45,7 @@ spec:
       destination:
         namespace: '{{.path.basename}}'
         server: https://kubernetes.default.svc
-      project: stores
+      project: default-pull
       source:
         helm:
           valueFiles:
@@ -64,7 +64,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-pos-pull
-  namespace: store-clusters
+  namespace: store-clusters-pull
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -82,7 +82,7 @@ spec:
       name: '{{.name}}-pos'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -92,7 +92,7 @@ spec:
       destination:
         namespace: pos
         server: https://kubernetes.default.svc
-      project: stores
+      project: default-pull
       source:
         path: apps/k8s/manifests/tailwind-pos/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
@@ -109,7 +109,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-infra-pull
-  namespace: store-clusters
+  namespace: store-clusters-pull
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -127,7 +127,7 @@ spec:
       name: '{{.name}}-infra'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -137,7 +137,7 @@ spec:
       destination:
         namespace: infra
         server: https://kubernetes.default.svc
-      project: stores
+      project: default-pull
       source:
         path: apps/k8s/manifests/http-server-upload/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
