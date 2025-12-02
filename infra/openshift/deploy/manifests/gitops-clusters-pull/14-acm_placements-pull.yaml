@@ -2,26 +2,26 @@
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
-  name: stores
-  namespace: store-clusters-pull
+  name: stores-pull
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
-    - stores
+    - stores-pull
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
-  name: stores-pos
-  namespace: store-clusters-pull
+  name: stores-pos-pull
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
-    - stores
+    - stores-pull
   predicates:
     - requiredClusterSelector:
         labelSelector:
@@ -31,14 +31,14 @@ spec:
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
-  name: stores-infra
-  namespace: store-clusters-pull
+  name: stores-infra-pull
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   clusterSets:
-    - stores
+    - stores-pull
   predicates:
     - requiredClusterSelector:
         labelSelector:

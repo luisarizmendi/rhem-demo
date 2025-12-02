@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  namespace: store-clusters-pull
+  namespace: openshift-gitops
 spec:
   generators:
     - matrix:
@@ -25,7 +25,7 @@ spec:
                     configMapRef: acm-placement
                     labelSelector:
                       matchLabels:
-                        cluster.open-cluster-management.io/placement: stores
+                        cluster.open-cluster-management.io/placement: stores-pull
                     requeueAfterSeconds: 180
                 - clusters: {}
   goTemplate: true
@@ -35,7 +35,7 @@ spec:
     metadata:
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -64,7 +64,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-pos-pull
-  namespace: store-clusters-pull
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -74,7 +74,7 @@ spec:
         configMapRef: acm-placement
         labelSelector:
           matchLabels:
-            cluster.open-cluster-management.io/placement: stores-pos
+            cluster.open-cluster-management.io/placement: stores-pos-pull
         requeueAfterSeconds: 180
   goTemplate: true
   template:
@@ -82,7 +82,7 @@ spec:
       name: '{{.name}}-pos'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
@@ -109,7 +109,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: stores-app-infra-pull
-  namespace: store-clusters-pull
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -119,7 +119,7 @@ spec:
         configMapRef: acm-placement
         labelSelector:
           matchLabels:
-            cluster.open-cluster-management.io/placement: stores-infra
+            cluster.open-cluster-management.io/placement: stores-infra-pull
         requeueAfterSeconds: 180
   goTemplate: true
   template:
@@ -127,7 +127,7 @@ spec:
       name: '{{.name}}-infra'
       annotations:
         apps.open-cluster-management.io/ocm-managed-cluster: '{{name}}'
-        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: store-clusters-pull
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
         argocd.argoproj.io/skip-reconcile: "true" 
       labels:
         apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true" 
