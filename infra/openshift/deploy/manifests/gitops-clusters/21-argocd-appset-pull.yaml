@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/managed-by: stores-apps-helm-global
   name: stores-apps-helm-global-pull
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   namespace: store-clusters
 spec:
@@ -66,7 +66,7 @@ metadata:
   name: stores-app-pos-pull
   namespace: store-clusters
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   generators:
@@ -111,7 +111,7 @@ metadata:
   name: stores-app-infra-pull
   namespace: store-clusters
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "21"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   generators:
