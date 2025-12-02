@@ -40,7 +40,7 @@ spec:
       destination:
         namespace: '{{.path.basename}}'
         server: '{{.server}}'
-      project: default
+      project: stores
       source:
         helm:
           valueFiles:
@@ -82,7 +82,7 @@ spec:
       destination:
         namespace: pos
         server: '{{.server}}'
-      project: default
+      project: stores
       source:
         path: apps/k8s/manifests/tailwind-pos/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
@@ -122,7 +122,7 @@ spec:
       destination:
         namespace: infra
         server: '{{.server}}'
-      project: default
+      project: stores
       source:
         path: apps/k8s/manifests/http-server-upload/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'

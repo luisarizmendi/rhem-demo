@@ -5,7 +5,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "11"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: stores
+  name: stores-pull
   namespace: store-clusters
 spec:
   clusterResourceWhitelist:
