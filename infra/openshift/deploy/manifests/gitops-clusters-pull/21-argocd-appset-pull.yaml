@@ -45,7 +45,7 @@ spec:
       destination:
         namespace: '{{.path.basename}}'
         server: https://kubernetes.default.svc
-      project: default-pull
+      project: stores-pull
       source:
         helm:
           valueFiles:
@@ -92,7 +92,7 @@ spec:
       destination:
         namespace: pos
         server: https://kubernetes.default.svc
-      project: default-pull
+      project: stores-pull
       source:
         path: apps/k8s/manifests/tailwind-pos/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
@@ -137,7 +137,7 @@ spec:
       destination:
         namespace: infra
         server: https://kubernetes.default.svc
-      project: default-pull
+      project: stores-pull
       source:
         path: apps/k8s/manifests/http-server-upload/deploy
         repoURL: 'https://github.com/luisarizmendi/rhem-demo.git'
