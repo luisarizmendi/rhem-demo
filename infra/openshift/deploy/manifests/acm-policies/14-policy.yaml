@@ -12,46 +12,63 @@ metadata:
   namespace: acm-policies
 spec:
   disabled: false
-  remediationAction: enforce
   policy-templates:
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: app-stores-helm-hello
-        spec:
-          remediationAction: enforce
-          severity: low
-          object-templates:
-            - complianceType: musthave
-              objectDefinition:
-                apiVersion: argoproj.io/v1alpha1
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: app-store-global
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: stores
+              namespace: openshift-gitops
+            spec:
+              clusterResourceWhitelist:
+              - group: '*'
+                kind: '*'
+              description: Project for store APPs
+              destinations:
+              - namespace: '*'
+                server: https://kubernetes.default.svc
+              sourceRepos:
+              - '*'
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: cluster-config-bootstrap
+              namespace: openshift-gitops
+            spec:
+              destination:
+                namespace: openshift-gitops
+                server: https://kubernetes.default.svc
+              ignoreDifferences:
+              - group: argoproj.io
+                jsonPointers:
+                - /spec/syncPolicy/automated
                 kind: Application
-                metadata:
-                  name: '{{hub .ManagedClusterName hub}}-helm-hello'
-                  namespace: openshift-gitops
-                  labels:
-                    app.kubernetes.io/managed-by: stores-apps-helm-global
-                spec:
-                  destination:
-                    namespace: hello
-                    server: https://kubernetes.default.svc
-                  project: stores
-                  source:
-                    path: apps/k8s/helm/hello
-                    repoURL: https://github.com/luisarizmendi/rhem-demo.git
-                    targetRevision: main
-                    helm:
-                      valueFiles:
-                        - values.yaml
-                        - 'environment/function/values-{{hub (index .ManagedClusterLabels "function") hub}}.yaml'
-                        - 'environment/site/values-{{hub (index .ManagedClusterLabels "site") hub}}.yaml'
-                  syncPolicy:
-                    automated:
-                      selfHeal: true
-                      prune: true
-                    syncOptions:
-                      - CreateNamespace=true
+                managedFieldsManagers:
+                - argocd-server
+              project: stores
+              source:
+                path: apps/k8s/manifests/tailwind-pos/deploy
+                repoURL: https://github.com/luisarizmendi/rhem-demo.git
+                targetRevision: HEAD
+              syncPolicy:
+                automated:
+                  selfHeal: true
+                  prune: true
+                syncOptions:
+                  - CreateNamespace=true
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
