@@ -28,11 +28,18 @@ spec:
           - path: "/etc/motd"
             content: "This system is managed by flightctl."
             mode: 0644
+      - gitRef:
+          mountPath: /
+          path: /configs/kvm
+          repository: rhem-demo
+          targetRevision: main
+        name: vms
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
           - "libvirt-vm*.service"
-
+      os:
+        image: ghcr.io/luisarizmendi/device-rhel-kvm:v1
 
 
 
