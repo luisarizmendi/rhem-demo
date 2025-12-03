@@ -2,7 +2,7 @@
 apiVersion: policy.open-cluster-management.io/v1beta1
 kind: PolicySet
 metadata:
-  name: store-policy
+  name: store-policy-global
   namespace: acm-policies
   annotations:
     argocd.argoproj.io/sync-wave: "13"
@@ -11,6 +11,7 @@ spec:
   description: Policy for bootstrapping Microshift with GitOps
   policies:
   - app-store-global
+  - app-store-global-helm
 ---
 apiVersion: policy.open-cluster-management.io/v1beta1
 kind: PolicySet

@@ -14,7 +14,7 @@ placementRef:
 subjects:
   - apiGroup: policy.open-cluster-management.io
     kind: PolicySet
-    name: store-policy
+    name: store-policy-global
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
