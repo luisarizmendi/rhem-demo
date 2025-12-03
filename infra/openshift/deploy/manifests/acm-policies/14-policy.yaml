@@ -110,7 +110,7 @@ spec:
             apiVersion: argoproj.io/v1alpha1
             kind: Application
             metadata:
-              name: cluster-config-bootstrap
+              name: tailwind-pos
               namespace: openshift-gitops
             spec:
               destination:
@@ -178,7 +178,7 @@ spec:
             apiVersion: argoproj.io/v1alpha1
             kind: Application
             metadata:
-              name: cluster-config-bootstrap
+              name: http-server-upload
               namespace: openshift-gitops
             spec:
               destination:
@@ -193,7 +193,7 @@ spec:
                 - argocd-server
               project: cluster-config
               source:
-                path: apps/k8s/tailwind-pos/deploy
+                path: apps/k8s/http-server-upload/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
                 targetRevision: HEAD
               syncPolicy:
