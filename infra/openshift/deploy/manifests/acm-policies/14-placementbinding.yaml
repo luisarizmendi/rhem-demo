@@ -5,7 +5,7 @@ metadata:
   name: binding-store-policy
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-wave: "14"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 placementRef:
   apiGroup: cluster.open-cluster-management.io
@@ -22,7 +22,7 @@ metadata:
   name: binding-store-policy-pos
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-wave: "14"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 placementRef:
   apiGroup: cluster.open-cluster-management.io
@@ -39,7 +39,7 @@ metadata:
   name: binding-store-policy-infra
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-wave: "14"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 placementRef:
   apiGroup: cluster.open-cluster-management.io
