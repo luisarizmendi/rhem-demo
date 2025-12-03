@@ -155,8 +155,6 @@ spec:
                   - path: infra/openshift/deploy/manifests/*
                   - path: infra/openshift/deploy/manifests/gitops-clusters-pull
                     exclude: true
-                  - path: infra/openshift/deploy/manifests/placement-pull
-                    exclude: true
                   - path: infra/openshift/deploy/manifests/gitops-clusters
                     exclude: true
             template:
