@@ -5,7 +5,7 @@ metadata:
   name: store-policy
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   description: Policy for bootstrapping Microshift with GitOps
@@ -18,7 +18,7 @@ metadata:
   name: store-policy-pos
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   description: Policy for bootstrapping Microshift with GitOps
@@ -31,7 +31,7 @@ metadata:
   name: store-policy-infra
   namespace: acm-policies
   annotations:
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   description: Policy for bootstrapping Microshift with GitOps
