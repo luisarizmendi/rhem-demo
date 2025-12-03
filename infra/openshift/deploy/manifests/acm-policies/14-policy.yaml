@@ -38,6 +38,7 @@ spec:
                   server: https://kubernetes.default.svc
                 sourceRepos:
                 - '*'
+
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
