@@ -25,13 +25,13 @@ spec:
             apiVersion: argoproj.io/v1alpha1
             kind: AppProject
             metadata:
-              name: cluster-config
+              name: stores
               namespace: openshift-gitops
             spec:
               clusterResourceWhitelist:
               - group: '*'
                 kind: '*'
-              description: Project for overall cluster configuration
+              description: Project for store APPs
               destinations:
               - namespace: '*'
                 server: https://kubernetes.default.svc
@@ -55,7 +55,7 @@ spec:
                 kind: Application
                 managedFieldsManagers:
                 - argocd-server
-              project: cluster-config
+              project: stores
               source:
                 path: apps/k8s/tailwind-pos/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
@@ -93,13 +93,13 @@ spec:
             apiVersion: argoproj.io/v1alpha1
             kind: AppProject
             metadata:
-              name: cluster-config
+              name: stores
               namespace: openshift-gitops
             spec:
               clusterResourceWhitelist:
               - group: '*'
                 kind: '*'
-              description: Project for overall cluster configuration
+              description: Project for store APPs
               destinations:
               - namespace: '*'
                 server: https://kubernetes.default.svc
@@ -123,7 +123,7 @@ spec:
                 kind: Application
                 managedFieldsManagers:
                 - argocd-server
-              project: cluster-config
+              project: stores
               source:
                 path: apps/k8s/tailwind-pos/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
@@ -161,13 +161,13 @@ spec:
             apiVersion: argoproj.io/v1alpha1
             kind: AppProject
             metadata:
-              name: cluster-config
+              name: stores
               namespace: openshift-gitops
             spec:
               clusterResourceWhitelist:
               - group: '*'
                 kind: '*'
-              description: Project for overall cluster configuration
+              description: Project for store APPs
               destinations:
               - namespace: '*'
                 server: https://kubernetes.default.svc
@@ -191,7 +191,7 @@ spec:
                 kind: Application
                 managedFieldsManagers:
                 - argocd-server
-              project: cluster-config
+              project: stores
               source:
                 path: apps/k8s/http-server-upload/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
