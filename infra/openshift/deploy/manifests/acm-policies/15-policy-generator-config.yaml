@@ -2,7 +2,6 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PolicyGenerator
 metadata:
   name: microshift-gitops-policy-generator
-  namespace: stores
   annotations:
     argocd.argoproj.io/sync-wave: "15"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
