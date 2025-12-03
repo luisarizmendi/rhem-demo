@@ -1,0 +1,35 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: microshift-gitops-policy-generator
+  annotations:
+    argocd.argoproj.io/sync-wave: "32"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+policyDefaults:
+  namespace: acm-policies
+  remediationAction: enforce
+placementBindingDefaults:
+  name: "binding-policy-gitops"
+policies:
+  - name: microshift-gitops
+    remediationAction: enforce
+    manifests:
+      - path: manifests/gitops/argocd
+  - name: microshift-bootstrap
+    remediationAction: enforce
+    manifests:
+      - path: manifests/gitops/bootstrap
+  - name: microshift-eso
+    remediationAction: enforce
+    manifests:
+      - path: manifests/gitops/eso
+policySets:
+  - name: "microshift-gitops"
+    description: "Policy for bootstrapping Microshift with GitOps"
+    policies:
+      - microshift-gitops
+      - microshift-bootstrap
+      - microshift-eso
+    generatePolicySetPlacement: false
+    placement:
+      name: placement-microshift-gitops
