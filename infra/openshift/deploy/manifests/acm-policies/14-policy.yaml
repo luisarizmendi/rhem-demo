@@ -18,7 +18,7 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
         metadata:
-          name: app-stores-helm-chart-1
+          name: app-stores-helm-hello
         spec:
           remediationAction: enforce
           severity: low
@@ -28,7 +28,7 @@ spec:
                 apiVersion: argoproj.io/v1alpha1
                 kind: Application
                 metadata:
-                  name: '{{hub .ManagedClusterName hub}}-chart-name-1'
+                  name: '{{hub .ManagedClusterName hub}}-helm-hello'
                   namespace: openshift-gitops
                   labels:
                     app.kubernetes.io/managed-by: stores-apps-helm-global
@@ -38,7 +38,7 @@ spec:
                     server: https://kubernetes.default.svc
                   project: stores
                   source:
-                    path: apps/k8s/helm/chart-name-1
+                    path: apps/k8s/helm/hello
                     repoURL: https://github.com/luisarizmendi/rhem-demo.git
                     targetRevision: main
                     helm:
