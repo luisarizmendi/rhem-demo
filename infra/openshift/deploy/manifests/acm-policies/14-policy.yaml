@@ -59,10 +59,13 @@ spec:
               source:
                 path: apps/k8s/manifests/tailwind-pos/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
-                targetRevision: HEAD
+                targetRevision: main
               syncPolicy:
                 automated:
                   selfHeal: true
+                  prune: true
+                syncOptions:
+                  - CreateNamespace=true
         remediationAction: enforce
         severity: low
   remediationAction: enforce
@@ -114,7 +117,7 @@ spec:
               namespace: openshift-gitops
             spec:
               destination:
-                namespace: openshift-gitops
+                namespace: pos
                 server: https://kubernetes.default.svc
               ignoreDifferences:
               - group: argoproj.io
@@ -127,10 +130,13 @@ spec:
               source:
                 path: apps/k8s/manifests/tailwind-pos/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
-                targetRevision: HEAD
+                targetRevision: main
               syncPolicy:
                 automated:
+                  prune: true
                   selfHeal: true
+                syncOptions:
+                  - CreateNamespace=true
         remediationAction: enforce
         severity: low
   remediationAction: enforce
@@ -182,7 +188,7 @@ spec:
               namespace: openshift-gitops
             spec:
               destination:
-                namespace: openshift-gitops
+                namespace: infra
                 server: https://kubernetes.default.svc
               ignoreDifferences:
               - group: argoproj.io
@@ -195,10 +201,13 @@ spec:
               source:
                 path: apps/k8s/manifests/http-server-upload/deploy
                 repoURL: https://github.com/luisarizmendi/rhem-demo.git
-                targetRevision: HEAD
+                targetRevision: main
               syncPolicy:
                 automated:
                   selfHeal: true
+                  prune: true
+                syncOptions:
+                  - CreateNamespace=true
         remediationAction: enforce
         severity: low
   remediationAction: enforce
