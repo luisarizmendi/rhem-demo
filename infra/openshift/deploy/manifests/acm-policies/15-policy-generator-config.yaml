@@ -8,24 +8,14 @@ policyDefaults:
 placementBindingDefaults:
   name: "binding-policy-gitops"
 policies:
-  - name: microshift-gitops
+  - name: microshift-bootstrap-app
     remediationAction: enforce
     manifests:
-      - path: manifests/gitops/argocd
-  - name: microshift-bootstrap
-    remediationAction: enforce
-    manifests:
-      - path: manifests/gitops/bootstrap
-  - name: microshift-eso
-    remediationAction: enforce
-    manifests:
-      - path: manifests/gitops/eso
+      - path: manifests/bootstrap-app
 policySets:
   - name: "microshift-gitops"
     description: "Policy for bootstrapping Microshift with GitOps"
     policies:
-      - microshift-gitops
-      - microshift-bootstrap
-      - microshift-eso
+      - microshift-bootstrap-app
     placement:
       name: placement-microshift-gitops
