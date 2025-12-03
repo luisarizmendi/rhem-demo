@@ -1,0 +1,36 @@
+apiVersion: flightctl.io/v1alpha1
+kind: Fleet
+metadata:
+  labels: {}
+  name: kiosk
+spec:
+  selector:
+    matchLabels:
+      fleet: "kiosk"
+  template:
+    metadata:
+      labels:
+        fleet: kiosk
+    spec:
+      config:
+      - gitRef:
+          mountPath: /
+          path: /configs/kiosk/site/{{ .metadata.labels.site }}
+          repository: rhem-demo
+          targetRevision: main
+        name: site-conf
+      - gitRef:
+          mountPath: /
+          path: /configs/kiosk/function/{{ .metadata.labels.function }}
+          repository: rhem-demo
+          targetRevision: main
+        name: function-conf
+      systemd:
+        matchPatterns:
+          - "flightctl-agent.service"
+      os:
+        image: ghcr.io/luisarizmendi/device-kiosk:v1
+
+
+
+

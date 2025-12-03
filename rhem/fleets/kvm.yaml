@@ -2,15 +2,15 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels: {}
-  name: rhel
+  name: kvm
 spec:
   selector:
     matchLabels:
-      fleet: "rhel"
+      fleet: "kvm"
   template:
     metadata:
       labels:
-        fleet: rhel
+        fleet: kvm
     spec:
       applications:
       - envVars:
@@ -28,24 +28,11 @@ spec:
           - path: "/etc/motd"
             content: "This system is managed by flightctl."
             mode: 0644
-      - gitRef:
-          mountPath: /
-          path: /configs/site/{{ .metadata.labels.site }}
-          repository: rhem-demo
-          targetRevision: main
-        name: site-conf
-      - gitRef:
-          mountPath: /
-          path: /configs/function/{{ .metadata.labels.function }}
-          repository: rhem-demo
-          targetRevision: main
-        name: function-conf
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
           - "libvirt-vm*.service"
-      os:
-        image: ghcr.io/luisarizmendi/device-demo-kiosk:v2
+
 
 
 
