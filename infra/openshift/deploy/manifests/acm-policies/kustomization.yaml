@@ -1,8 +1,0 @@
-namespace: acm-policies
-
-resources:
-- 13-placement.yaml
-- 14-placementbinding.yaml
-
-generators:
-- 15-policy-generator-config.yaml

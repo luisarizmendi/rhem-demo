@@ -1,0 +1,13 @@
+---
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: microshift-gitops
+  namespace: acm-policies
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  description: Policy for bootstrapping Microshift with GitOps
+  policies:
+  - microshift-bootstrap-app
