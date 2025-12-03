@@ -1,0 +1,48 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-store-policy
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: stores
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: PolicySet
+    name: store-policy
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-store-policy-pos
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: stores-pos
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: PolicySet
+    name: store-policy-pos
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-store-policy-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: stores-infra
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: PolicySet
+    name: store-policy-infra

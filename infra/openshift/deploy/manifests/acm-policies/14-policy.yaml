@@ -1,0 +1,204 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: app-store-global
+  namespace: acm-policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: app-store-global
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: cluster-config
+              namespace: openshift-gitops
+            spec:
+              clusterResourceWhitelist:
+              - group: '*'
+                kind: '*'
+              description: Project for overall cluster configuration
+              destinations:
+              - namespace: '*'
+                server: https://kubernetes.default.svc
+              sourceRepos:
+              - '*'
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: cluster-config-bootstrap
+              namespace: openshift-gitops
+            spec:
+              destination:
+                namespace: openshift-gitops
+                server: https://kubernetes.default.svc
+              ignoreDifferences:
+              - group: argoproj.io
+                jsonPointers:
+                - /spec/syncPolicy/automated
+                kind: Application
+                managedFieldsManagers:
+                - argocd-server
+              project: cluster-config
+              source:
+                path: apps/k8s/tailwind-pos/deploy
+                repoURL: https://github.com/luisarizmendi/rhem-demo.git
+                targetRevision: HEAD
+              syncPolicy:
+                automated:
+                  selfHeal: true
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: app-store-pos
+  namespace: acm-policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: app-store-pos
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: cluster-config
+              namespace: openshift-gitops
+            spec:
+              clusterResourceWhitelist:
+              - group: '*'
+                kind: '*'
+              description: Project for overall cluster configuration
+              destinations:
+              - namespace: '*'
+                server: https://kubernetes.default.svc
+              sourceRepos:
+              - '*'
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: cluster-config-bootstrap
+              namespace: openshift-gitops
+            spec:
+              destination:
+                namespace: openshift-gitops
+                server: https://kubernetes.default.svc
+              ignoreDifferences:
+              - group: argoproj.io
+                jsonPointers:
+                - /spec/syncPolicy/automated
+                kind: Application
+                managedFieldsManagers:
+                - argocd-server
+              project: cluster-config
+              source:
+                path: apps/k8s/tailwind-pos/deploy
+                repoURL: https://github.com/luisarizmendi/rhem-demo.git
+                targetRevision: HEAD
+              syncPolicy:
+                automated:
+                  selfHeal: true
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: app-store-infra
+  namespace: acm-policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: app-store-infra
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: cluster-config
+              namespace: openshift-gitops
+            spec:
+              clusterResourceWhitelist:
+              - group: '*'
+                kind: '*'
+              description: Project for overall cluster configuration
+              destinations:
+              - namespace: '*'
+                server: https://kubernetes.default.svc
+              sourceRepos:
+              - '*'
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: cluster-config-bootstrap
+              namespace: openshift-gitops
+            spec:
+              destination:
+                namespace: openshift-gitops
+                server: https://kubernetes.default.svc
+              ignoreDifferences:
+              - group: argoproj.io
+                jsonPointers:
+                - /spec/syncPolicy/automated
+                kind: Application
+                managedFieldsManagers:
+                - argocd-server
+              project: cluster-config
+              source:
+                path: apps/k8s/tailwind-pos/deploy
+                repoURL: https://github.com/luisarizmendi/rhem-demo.git
+                targetRevision: HEAD
+              syncPolicy:
+                automated:
+                  selfHeal: true
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce

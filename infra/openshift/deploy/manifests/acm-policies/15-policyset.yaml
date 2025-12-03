@@ -1,0 +1,39 @@
+---
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: store-policy
+  namespace: acm-policies
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  description: Policy for bootstrapping Microshift with GitOps
+  policies:
+  - app-store-global
+---
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: store-policy-pos
+  namespace: acm-policies
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  description: Policy for bootstrapping Microshift with GitOps
+  policies:
+  - app-store-pos
+---
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: store-policy-infra
+  namespace: acm-policies
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  description: Policy for bootstrapping Microshift with GitOps
+  policies:
+  - app-store-infra
