@@ -59,4 +59,7 @@ spec:
       - configOverrides: {}
         enabled: false
         name: siteconfig
+      - configOverrides: {}
+        enabled: false
+        name: cnv-mtv-integrations-preview
   separateCertificateManagement: false
