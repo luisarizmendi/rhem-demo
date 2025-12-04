@@ -1,6 +1,0 @@
-apiVersion: cluster.open-cluster-management.io/v1alpha1
-kind: ClusterClaim
-metadata:
-  name: device.status
-spec:
-  value: disabled

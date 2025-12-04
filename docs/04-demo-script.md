@@ -2,7 +2,7 @@
 
 A step-by-step guide for running the Red Hat Edge Manager demo. Each section includes timing, key points, and detailed steps.
 
-## Demo Introduction (3 minutes)
+## Demo Introduction (5 minutes)
 
 ### Opening Points
 - Edge computing challenges: scale, remote locations, limited IT expertise
@@ -10,13 +10,13 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 - Resource limitations and operational complexity
 
 ### Environment Overview
-- **Demo setup**: RHEM running on kind (explain this is for demo simplicity)
+- **Demo setup**: Explain RHEM deployment
 - **Production reality**: RHEM integrates with Ansible Automation Platform or ACM
 - **Infrastructure**: Single laptop demonstration with VMs simulating edge devices
 
 ---
 
-## 1. Building Device Images (5 minutes + background)
+## 1. Building Device Images (10 minutes + background)
 
 ### Key Messages
 - Bootc leverages container tools and knowledge for OS image creation
@@ -36,15 +36,15 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    Introduce a change in the `Containerfile`:
 
    ```bash
-   # Make a visible change (e.g., add tmux package)
-   vi devices/kvm/Containerfile
+   # Make a visible change (e.g., add zsh package)
+   vi `devices/kvm/Containerfile`
    ```
 
    Push the change into Git:
 
    ```bash
-   git add devices/kvm/Containerfile
-   git commit -m "Add tmux package"
+   git add devices
+   git commit -m "Add zsh package"
    git push
    ```
 
@@ -55,6 +55,11 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 4. **Continue with next section** (build runs in background)
 
+
+![step 1](step-1.png)
+
+
+
 ### What to Mention
 - Two image types: KVM (general purpose) and Kiosk (display applications)
 - Subscription handling in GitHub Actions vs. registered RHEL hosts
@@ -62,7 +67,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ---
 
-## 2. Device Onboarding (7 minutes)
+## 2. Device Onboarding (10 minutes)
 
 ### Key Messages  
 - Zero-touch provisioning reduces onsite expertise requirements
@@ -74,10 +79,25 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 1. **Create and boot VMs**:
 
+   - Depending on the Images that you want to use, create one or multiple of these machines:
+
+   **Note:** If you want to demo Microshift, create either the `kiosk` or `kvm` VM to show RHEL configuration capabilities and one additional `microshift` VM to demo ACM integration. Maintain the `microshift` VM powered off until you start the Microshift management demo steps.
+
+   These are the recommended resources for each type:
+
    * Kiosk VM
       - 1.5GB RAM, 2 vCPUs, 20 GB Disk
+      - Boot from Kiosk device ISO
+
+   * KVM VM
+      - 4GB RAM, 4 vCPUs, 50 GB Disk
       - Boot from KVM device ISO
-      - **Wait time**: ~2:30 minutes for QR code appearance
+
+   * Microshift VM
+      - 4GB RAM, 4 vCPUs, 50 GB Disk
+      - Boot from Microshift device ISO
+
+   - **Wait time**: ~3:30 minutes
 
 2. **During boot wait, explain**:
    - USB with ISO boot simulation (could be PXE in production) instead of direct QCOW2 usage (for demo propouses)
@@ -85,10 +105,13 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    - Automatic certificate-based authentication
 
 3. **Handle enrollment request**:
-   - When QR appears, open RHEM UI
+   - When the Kiosk APP appears, open RHEM UI
    - Show enrollment request with device details
    - DO NOT accept the enrollment, that will be done in next step
    - **Wait time**: ~2 minutes for green status checks
+
+
+![step 2](step-2.png)
 
 
 ### What to Mention
@@ -110,34 +133,32 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 ### Demo Steps
 
 1. **Create fleet from Git**:
-   - RHEM UI → Repositories
-   - Add repository pointing to `rhem/fleets`
-   - Show the `fleet.yaml` file while waiting for sync completion. 
-   - Show fleet in **Fleets** section
+   - RHEM UI → `Repositories`
+   - Create a repository:
+         * Name: `rhem-demo`
+         * URL: `https://github.com/<your user>/<your repo>`
+         * Sync name: `rhem/fleets`
+         * Revision: `main`
+         * Path: `/rhem/fleets`
+   - Show the `fleet.yaml` file or/and how to create a fleet manually in the UI while waiting for sync completion (~1.5 minutes). 
+   - Show fleet in `Fleets` section
 
-3. **Deploy kiosk device**:
-   - Create new VM: 2.5GB RAM, 2 vCPUs
-   - Boot from **Kiosk** device ISO
-   - **Wait time**: Boot to kiosk app display
-
-4. **Enroll with fleet labels**:
-   - When enrollment appears, assign labels:
-     - `fleet=kiosk`
-     - `site=na` or `site=emea`  
-     - `function=<directory name under configs/function>`, for example `function=kiosk-energy`
+2. **Enroll with fleet labels**:
+   - Back to `Devices` and click in `Approve`
+   - Assign labels for:
+     * Your fleet(`kvm`, `kiosk` or `microshift`), e.g `fleet=kiosk`
+     * Your site with `site=na` or `site=emea`  
+     * Your function with `function=<directory name under configs/function>`, e.g. `function=kiosk-energy`
    - Accept enrollment
 
-5. **Verify fleet management**:
-   - **Wait time**: Several minutes for full configuration
-   - Device applies templated configuration based on labels
-   - Kiosk displays application based on function label
-   - Verify site-specific configs:
-     ```bash
-     # Check NTP configuration (varies by site)
-     cat /etc/chrony.conf
-     # Check container registry (varies by site) 
-     cat /etc/containers/registries.conf
-     ```
+3. **Wait for drift detection**:
+   - **Wait time**: ~2:30 minutes
+   - Explain drift detection process
+   - Show configuration status updates
+   - Full configuration takes several minutes, so it is better to move on to the next demo step while waiting.
+
+
+![step 3](step-3.png)
 
 ### What to Mention
 - Single fleet definition supports multiple configurations
@@ -146,9 +167,25 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 - Flexible device categorization
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 
-## 3. Configuration Management (5 minutes)
+## 4. Check Configuration Management (5 minutes)
 
 ### Key Messages
 - Runtime configuration preferred over build-time when needed
@@ -157,28 +194,22 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ### Demo Steps
 
-1. **Show configuration file**:
-   ```bash
-   cat configs/motd/generic
-   ```
+1. **Show configuration config in fleet definion**:
+   - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the config section
+   - Click Create a new Fleet in RHEM to show the Configuration management options
 
-2. **Apply configuration via RHEM**:
-   - Open device in RHEM UI
-   - Edit device configuration
-   - Add file: `/etc/motd`
-   - Method: Git repository ( Use: `/configs/function/generic` as source) or inline (use `/etc/motd` as file destination)
 
-3. **Wait for drift detection**:
-   - **Wait time**: ~2:30 minutes
-   - Explain drift detection process
-   - Show configuration status updates
 
-4. **Verify configuration**:
+2. **Verify configuration**:
    ```bash
    # SSH or VM console login
    ssh user@device-ip
    # MOTD should display the configured message
    ```
+
+
+![step 4](step-4.png)
+
 
 ### What to Mention
 When to Use Runtime Configuration:
@@ -187,9 +218,22 @@ When to Use Runtime Configuration:
 - Security credentials (not safe in images)
 - Frequently changing parameters
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 
-## 4. Application Deployment (10 minutes)
+## 5. Check Application Deployment (10 minutes)
 
 ### Key Messages
 - Container applications managed separately from OS lifecycle
@@ -238,11 +282,10 @@ When to Use Runtime Configuration:
    - Show pgAdmin version (9.5)
    - Optional: Configure PostgreSQL connection
 
-5. **Demonstrate upgrade to v2**:
-   - Edit device application configuration
-   - Change image to: `app-postgres:v2`
-   - **Wait time**: ~2 minutes for upgrade
-   - Login to pgAdmin again, show version 9.6
+
+
+
+![step 5](step-5.png)
 
 ###  What to Mention
 - Independent application lifecycle
@@ -250,9 +293,29 @@ When to Use Runtime Configuration:
 - Container ecosystem advantages
 - GitOps configuration management
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 
-## 5. Operating System Upgrades (7 minutes)
+## 6. Operating System Upgrades (10 minutes)
 
 ### Key Messages
 - Bootc enables image-based OS updates
@@ -261,6 +324,22 @@ When to Use Runtime Configuration:
 - Combines OS, configuration, and embedded applications
 
 ### Demo Steps
+
+
+
+
+
+5. **Demonstrate upgrade to v2**:
+   - Edit device application configuration
+   - Change image to: `app-postgres:v2`
+   - **Wait time**: ~2 minutes for upgrade
+   - Login to pgAdmin again, show version 9.6
+
+
+
+
+
+
 
 1. **Check current OS version**:
    ```bash
@@ -289,12 +368,87 @@ When to Use Runtime Configuration:
 
    Open `https://device-ip:9090` to show the Cockpit console.
 
+
+
+![step 6](step-6.png)
+
+
 ###  What to Mention
 - Benefits of bootc upgrades (atomic, consistent, and reproducible updates).
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 
-## 6. Device Observability (3 minutes)
+## 7. Microshift management with ACM (15 minutes)
+
+### Key Messages
+- RHEM is integrated with ACM to simplify k8s App management in RHDE
+- Zero-Touch Provisioning for k8s APPs after cluster group assignment
+- GitOps methodogy management benefits
+
+
+### Demo Steps
+
+1. **Log into the Microshift VM**
+   - Turn on the `microshift` VM and wait until QR appears in the VM console.
+   - SSH into the VM with `admin / redhat` (if you didn't change defaults)
+   - Run the following command to check all PODs runnin in Microshift: `watch oc get pod -A`
+   - Keep the output visible while you go through the next steps.
+   - Open a new SSH console and add your pull-secret: `vi /etc/crio/openshift-pull-secret` 
+
+**Note:** The pull secret was not included [in the image](https://github.com/luisarizmendi/rhem-demo/blob/main/devices/microshift/files/etc/crio/openshift-pull-secret) or [in the fleet configuration](https://github.com/luisarizmendi/rhem-demo/blob/main/rhem/fleets/microshift.yaml) because the GitHub repo is public and there is no secret store configured for it, but the appropiate security measures you won't need this manual step.
+
+2. **Accept enrollment request**:
+   - Open RHEM UI in ACM and open the enrollment request.
+   - Assign the `microshift` fleet by adding the label `fleet=microshift` and accept the enrollment
+   - Check changes in the `watch` command output, you will see how Advance Cluster Management components are added to Microshift.
+   - **Wait time**: ~3 minutes for green status checks. You can use this time to explain the different ways ACM can manage k8s applications and clusters.
+
+3. **Assign labels to Microshift and add it to ClusterSet**:
+   - In `Infrastructure > Clusters` find the new Microshift cluster
+   - Add the following labels to the cluster by click the three dots on the right of the cluster.
+     - Your site label, either `site=na` or `site=emea`  
+     - Your function label, either `function=pos` or `function=infra`
+   - Assign the Microshift cluster to the `stores` ClusterSet by XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+4. **Review device compliance**
+   - Check in ACM `Governance` how the Policies were assigned to the device. It could take a couple of minutes.
+   - Check changes in the `watch` command output, after some time you will see two new applications. One will be `hello` and the other will depend on your `function` label, it could be either `pos` or `infra`.
+   - Run this command in the VM to get the routes to the new APPs: `oc get route -A`
+
+5. **Review deployed APPs**
+   - Open the URL for the `hello` APP. You will see a message that will depend on the labels `site` and `function` that you configured in your cluster.
+   - Open the URL for the `pos` or `infra` APP
+
+
+![step 7](step-7.png)
+
+###  What to Mention
+- ACM integration unlocks advanced management features
+- Zero-Touch provisioning for Microshift APPs
+- You can control what APPs are deployed depending on cluster labels and ClusterSet assignment 
+- You can control deployed APP configuration depending on cluster labels and ClusterSet assignment 
+
+
+---
+
+## [OPTIONAL] 8. Device Observability (7 minutes)
 
 ### Key Messages
 - Built-in device monitoring without additional setup
@@ -321,11 +475,20 @@ When to Use Runtime Configuration:
    - Explain alarm threshold configuration
    - Point out monitoring dashboard when alarm appears
 
+
+
+![step 8](step-8.png)
+
 ###  What to Mention
 - CPU, memory, disk utilization
 - System health and connectivity status
 - Event logs and system metrics
 - Customizable alert thresholds and destinations
+
+
+
+
+
 
 ---
 
@@ -340,4 +503,4 @@ When to Use Runtime Configuration:
 6. **Proactive Insights**: Built-in monitoring and troubleshooting
 7. **Complete Lifecycle**: Onboarding through decommissioning support
 
-Explain the [RHEM value](05-value-propotitions.md).
+Now explain the [RHEM value](05-value-propotitions.md).

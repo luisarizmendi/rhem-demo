@@ -11,7 +11,7 @@ If you plan to manage Microshift, you should deliver the demo with the ACM integ
 
 ### Option 1: RHEM with ACM integration
 
-1. Create an OpenShift Cluster (this demo was tested with OpenShift version `4.20`).
+1. Create an OpenShift Cluster (this demo was tested with OpenShift version `4.20` and ACM `2.15`).
 
 2. Click the `+` sign on the top right corner of the OpenShift console and select `Import YAML`
 
