@@ -108,8 +108,6 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    - When the Kiosk APP appears, open RHEM UI
    - Show enrollment request with device details
    - DO NOT accept the enrollment, that will be done in next step
-   - **Wait time**: ~2 minutes for green status checks
-
 
 ![step 2](step-2.png)
 
@@ -152,10 +150,9 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    - Accept enrollment
 
 3. **Wait for drift detection**:
-   - **Wait time**: ~2:30 minutes
    - Explain drift detection process
-   - Show configuration status updates
-   - Full configuration takes several minutes, so it is better to move on to the next demo step while waiting.
+   - Explain tahat full configuration takes several minutes (~6.5 minutes) because it needs to download some container images for the APPs
+   - Move on to the next demo step while device is updating.
 
 
 ![step 3](step-3.png)

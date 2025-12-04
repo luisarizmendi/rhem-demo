@@ -22,6 +22,12 @@ spec:
         image: ghcr.io/luisarizmendi/app-postgres:v1
         name: postgres
       config:
+      - name: motd-update
+        configType: InlineConfigProviderSpec
+        inline:
+          - path: "/etc/motd"
+            content: "This system is managed by flightctl."
+            mode: 0644
       - gitRef:
           mountPath: /
           path: /configs/kiosk/site/{{ .metadata.labels.site }}
@@ -38,6 +44,7 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: ghcr.io/luisarizmendi/device-kiosk:v1
+        image: ghcr.io/luisarizmendi/device-kiosk:latest-amd64
+
 
 
