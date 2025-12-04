@@ -74,32 +74,6 @@ spec:
             backoffLimit: 1
           EOF
 
-
-          ############################################################################################################
-          ## BUG FIX FOR ACM 2.14.1
-          ######################################################
-          cat <<EOF | oc apply -f -
-          kind: ConfigMap
-          apiVersion: v1
-          metadata:
-            name: acm-2.14.1-rhem-api
-            namespace: open-cluster-management
-          data:
-            overrides.json: |-
-              [
-                {
-                  "image-name": "flightctl-api-rhel9",
-                  "image-tag": "v0.7.2",
-                  "image-remote": "registry.redhat.io/rhem",
-                  "image-key": "flightctl_api"
-                }
-              ]
-          EOF
-
-          # apply the overrides to the ACM multiclusterhub resource
-          oc annotate mch -n open-cluster-management multiclusterhub installer.open-cluster-management.io/image-overrides-configmap=acm-2.14.1-rhem-api
-          ############################################################################################################
-
           echo "Environment ready!"
         securityContext:
           allowPrivilegeEscalation: false
