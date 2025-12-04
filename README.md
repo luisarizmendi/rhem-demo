@@ -42,7 +42,7 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 
 5. **Run the Demo** - Follow [Demo Script](docs/04-demo-script.md)
 
-6. **RHEM Value** - Follow [Demo Script](docs/05-value-propotitions.md)
+6. **Explain RHEM Value** - Follow [Demo Script](docs/05-value-propotitions.md)
 
 ## Demo Sections
 

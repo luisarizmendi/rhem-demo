@@ -2,12 +2,14 @@
 
 This guide covers deploying Red Hat Edge Manager for the demo environment.
 
+## Deploy RHEM
+
 This demo can ben delivered with two kinds of deployments RHEM standalone or RHEM integrated with Red Hat Advanced Cluster Management (ACM).
 
 If you plan to manage Microshift, you should deliver the demo with the ACM integration.
 
 
-## Option 1: RHEM with ACM integration
+### Option 1: RHEM with ACM integration
 
 1. Create an OpenShift Cluster (this demo was tested with OpenShift version `4.20`).
 
@@ -28,11 +30,19 @@ If you plan to manage Microshift, you should deliver the demo with the ACM integ
 Once the environment is ready you will have access to RHEM under the `Edge Management` menu of the `Fleet Management` view (click drop-down menu on the top left of the UI to change the view).
 
 
-## Option 2: RHEM Standalone Deployment Steps
+### Option 2: RHEM Standalone Deployment Steps
 
 Follow the steps in the [Getting Started guide in the Flightctl repo](https://github.com/flightctl/flightctl/blob/main/docs/user/getting-started.md).
 
-Remember to obtain the config.yaml file:
+
+#### Demo Environment Notes
+
+**Important:** When presenting, explain that:
+- This is a standalone deployment for demo purposes. It uses less resources and you can deploy the latest capabilities in development 
+- Production deployments integrate with existing Red Hat platforms
+
+
+## Obtain the `config.yaml` file:
 
 
 ```bash
@@ -43,16 +53,6 @@ flightctl login --username=<your_user> --password=<your_password> --insecure-ski
 flightctl certificate request --signer=enrollment --expiration=365d --output=embedded > config.yaml
 ```
 
-
-
-flightctl login <API_URL> --insecure-skip-tls-verify --web
-
-
-### Demo Environment Notes
-
-**Important:** When presenting, explain that:
-- This is a standalone deployment for demo purposes. It uses less resources and you can deploy the latest capabilities in development 
-- Production deployments integrate with existing Red Hat platforms
 
 ## Next Steps
 

@@ -12,8 +12,9 @@ Create version 1 (baseline) of both device image definitions (`kvm` and `kiosk`)
 
 ```bash
 # Copy RHEM config to image directories
-cp config.yaml devices/kvm/
-cp config.yaml devices/kiosk/
+cp config.yaml devices/rhel-kvm/files/etc/flightctl/config.yaml
+cp config.yaml devices/kiosk/files/etc/flightctl/config.yaml
+cp config.yaml devices/microshift/files/etc/flightctl/config.yaml
 ```
 
 2. Introduce any change in any file under `apps/postgres`, for example add a space or a comment.
