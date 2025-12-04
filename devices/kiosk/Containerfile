@@ -29,7 +29,7 @@ RUN dnf config-manager \
 
 RUN useradd -m -d /var/home/kiosk kiosk 
 
-RUN dnf install -y shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git firefox \
+RUN dnf install -y stress shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git firefox \
     && dnf clean all
 
 RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /etc/gdm/
