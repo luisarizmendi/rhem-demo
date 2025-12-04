@@ -43,12 +43,6 @@ spec:
               run: kubectl apply -f /var/local/acm-import/import.yaml
               envVars:
                 KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
-      - gitRef:
-          mountPath: /
-          path: /configs/site/{{ .metadata.labels.site }}
-          repository: rhem-demo
-          targetRevision: main
-        name: site-conf
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
