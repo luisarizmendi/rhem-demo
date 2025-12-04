@@ -347,21 +347,6 @@ When to Use Runtime Configuration:
 ---
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## 7. [OPTIONAL] Microshift management with ACM (15 minutes)
 
 **Note:** You need RHEM integrated with ACM to follow these steps.
@@ -390,7 +375,7 @@ When to Use Runtime Configuration:
    - **Wait time**: ~3 minutes for green status checks. You can use this time to explain the different ways ACM can manage k8s applications and clusters.
 
 3. **Assign labels to Microshift and add it to ClusterSet**:
-   - In `Infrastructure > Clusters` find the new Microshift cluster
+   - In `Infrastructure > Clusters` find the new Microshift cluster. Check that all Add-ons are ok.
    - Add the following labels to the cluster by click the three dots on the right of the cluster.
      - Your site label, either `site=na` or `site=emea`  
      - Your function label, either `function=pos` or `function=infra`
@@ -398,31 +383,12 @@ When to Use Runtime Configuration:
 
 4. **Review device compliance**
    - Go to ACM `Governance` menu. In the the `Policies` tab you can check that the configuration have been applied to the device.
+   - Check changes in the `watch` command output that you run before. After some time you will see two new applications. One will be `hello` and the other will depend on your `function` label, it could be either `pos` or `infra`.
    
-   
-
-
-
-   - SSH to the device. 
-   
-   
-
-   - Check changes in the `watch` command output, after some time you will see two new applications. One will be `hello` and the other will depend on your `function` label, it could be either `pos` or `infra`.
-   - Run this command in the VM to get the routes to the new APPs: `oc get route -A`
-
 5. **Review deployed APPs**
+   - Run this command in the device to get the routes to the new APPs: `oc get route -A`
    - Open the URL for the `hello` APP. You will see a message that will depend on the labels `site` and `function` that you configured in your cluster.
    - Open the URL for the `pos` or `infra` APP
-
-
-
-
-
-
-
-
-
-
 
 
 
