@@ -367,13 +367,34 @@ When to Use Runtime Configuration:
    - Assign the Microshift cluster to the `stores` ClusterSet in the `Infrastructure > Clusters` menu under `Cluster sets` tab. Click the three dots on the right to the `stores` ClusterSet and click `Manage resource assignments`. Select the Microshift cluster and click "Review" and "Save".
 
 4. **Review device compliance**
-   - Check in ACM `Governance` how the Policies were assigned to the device. It could take a couple of minutes.
+   - Go to ACM `Governance` menu. In the the `Policies` tab you can check that the configuration have been applied to the device.
+   
+   
+
+
+
+   - SSH to the device. 
+   
+   
+
    - Check changes in the `watch` command output, after some time you will see two new applications. One will be `hello` and the other will depend on your `function` label, it could be either `pos` or `infra`.
    - Run this command in the VM to get the routes to the new APPs: `oc get route -A`
 
 5. **Review deployed APPs**
    - Open the URL for the `hello` APP. You will see a message that will depend on the labels `site` and `function` that you configured in your cluster.
    - Open the URL for the `pos` or `infra` APP
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ![step 7](step-7.png)
@@ -383,6 +404,16 @@ When to Use Runtime Configuration:
 - Zero-Touch provisioning for Microshift APPs
 - You can control what APPs are deployed depending on cluster labels and ClusterSet assignment 
 - You can control deployed APP configuration depending on cluster labels and ClusterSet assignment 
+
+
+
+
+
+
+
+
+
+
 
 
 ---

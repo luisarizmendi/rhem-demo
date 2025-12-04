@@ -37,13 +37,16 @@ RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /et
 COPY files/ /
 
 RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
-    chown -R kiosk:kiosk /var/home/kiosk
+    chown -R kiosk:kiosk /var/home/kiosk && \
+    chmod +x /usr/local/bin/* && \
+    ln -s /usr/lib/systemd/system/first-boot.service /etc/systemd/system/multi-user.target.wants/first-boot.service && \
+    ln -s /usr/lib/systemd/system/hook-files.service /etc/systemd/system/multi-user.target.wants/hook-files.service
 
 RUN systemctl set-default graphical.target
 
 #////////////////////////////////////////
 #DEMO V2 update (tmux )
 #////////////////////////////////////////
-RUN dnf install -y tmux && \
-    dnf clean all
+#RUN dnf install -y tmux && \
+#    dnf clean all
 #////////////////////////////////////////

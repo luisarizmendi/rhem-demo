@@ -43,12 +43,6 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  annotations:
-    policy.open-cluster-management.io/categories: CM Configuration Management
-    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
-    policy.open-cluster-management.io/standards: NIST SP 800-53
-    argocd.argoproj.io/sync-wave: "14"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: app-store-global-helm
   namespace: acm-policies
 spec:
@@ -85,8 +79,8 @@ spec:
                     helm:
                       valueFiles:
                         - values.yaml
-                        - 'environment/function/values-{{hub (index .ManagedClusterLabels "function") hub}}.yaml'
-                        - 'environment/site/values-{{hub (index .ManagedClusterLabels "site") hub}}.yaml'
+                        - '{{hub "environment/function/values-" (index .ManagedClusterLabels "function") ".yaml" hub}}'
+                        - '{{hub "environment/site/values-" (index .ManagedClusterLabels "site") ".yaml" hub}}'
                   syncPolicy:
                     automated:
                       selfHeal: true
