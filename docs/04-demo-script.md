@@ -347,7 +347,7 @@ When to Use Runtime Configuration:
 ---
 
 
-## 7. [OPTIONAL] Microshift management with ACM (15 minutes)
+## 7. [OPTIONAL] Microshift management with ACM (20 minutes)
 
 **Note:** You need RHEM integrated with ACM to follow these steps.
 
@@ -371,12 +371,11 @@ When to Use Runtime Configuration:
 2. **Accept enrollment request**:
    - Open RHEM UI in ACM and open the enrollment request.
    - Assign the `microshift` fleet by adding the label `fleet=microshift` and accept the enrollment
-   - Check changes in the `watch` command output, you will see how Advance Cluster Management components under `open-cluster-management-agent` namespace are added to Microshift.
-   - **Wait time**: ~3 minutes for green status checks. You can use this time to explain the different ways ACM can manage k8s applications and clusters.
+   - Check changes in the `watch` command output, you will see how Advance Cluster Management components under `open-cluster-management-agent` namespace are added to Microshift. It could take ~5 minutes to appear since you accepted the device, use that time to explain the different ways that ACM manage applications on top of k8s (policies, ArgoCD).
 
 3. **Assign labels to Microshift and add it to ClusterSet**:
-   - In `Infrastructure > Clusters` find the new Microshift cluster. Check that all Add-ons are ok.
-   - Add the following labels to the cluster by click the three dots on the right of the cluster.
+   - In `Infrastructure > Clusters` find the new Microshift cluster . 
+   - Check that all Add-ons are ok. Once everything is green, add the following labels to the cluster by click the three dots on the right of the cluster.
      - Your site label, either `site=na` or `site=emea`  
      - Your function label, either `function=pos` or `function=infra`
    - Assign the Microshift cluster to the `stores` ClusterSet in the `Infrastructure > Clusters` menu under `Cluster sets` tab. Click the three dots on the right to the `stores` ClusterSet and click `Manage resource assignments`. Select the Microshift cluster and click "Review" and "Save".
