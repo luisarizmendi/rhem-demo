@@ -149,10 +149,13 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
      * Your function with `function=<directory name under configs/function>`, e.g. `function=kiosk-energy`
    - Accept enrollment
 
+   **Note:** The kiosk image has enabled the `kiosk-solvent-recovery` function by default, so if you want to see a change in the APP you should configure your label to a diffent value than that one.
+
 3. **Wait for drift detection**:
    - Explain drift detection process
-   - Explain tahat full configuration takes several minutes (~6.5 minutes) because it needs to download some container images for the APPs
-   - Move on to the next demo step while device is updating.
+   - Wait until the `Update status` is "Up-to-date" (~1 minute)
+
+   **Note:** If you have in your `fleet.yaml` any other image version different than the one that it is installed by default with the ISO (`<name>:latest-<arch>`) there will be a System upgrade that will take more time (~6.5 minutes) since it needs to download the new image. 
 
 
 ![step 3](step-3.png)
@@ -162,21 +165,6 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 - Reduces management overhead
 - Consistent policy application
 - Flexible device categorization
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -192,17 +180,18 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 ### Demo Steps
 
 1. **Show configuration config in fleet definion**:
-   - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the config section
+   - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the `config` section
    - Click Create a new Fleet in RHEM to show the Configuration management options
-
 
 
 2. **Verify configuration**:
    ```bash
-   # SSH or VM console login
    ssh user@device-ip
-   # MOTD should display the configured message
+   # MOTD should display the configured message (`This system is managed by flightctl.`)
    ```
+
+3. **Verify kiosk APP**:
+   Depending on the label `function` assigned to the device, you will get an APP or another. See below an example for `kiosk-energy` 
 
 
 ![step 4](step-4.png)
@@ -214,16 +203,6 @@ When to Use Runtime Configuration:
 - Deployment-specific settings  
 - Security credentials (not safe in images)
 - Frequently changing parameters
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -241,15 +220,11 @@ When to Use Runtime Configuration:
 ### Demo Steps
 
 1. **Show application definition**:
-   ```bash
-   # Show compose file and how it's packaged
-   cat apps/compose/postgres/compose.yaml
-   cat apps/compose/postgres/Containerfile
-   ```
+   Show the compose file and how it's packaged by reviewing repo files under `apps/compose/postgres`
 
-2. **Deploy application (v1)**:
-   - Open device in RHEM UI
-   - Configure application:
+2. **Explain what was deployed into the Fleet**:
+   - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the `applications` section
+   - Review the values:
      - Image: `ghcr.io/luisarizmendi/app-postgres:v1`
      - Environment variables:
        ```
@@ -260,26 +235,22 @@ When to Use Runtime Configuration:
        PGADMIN_PW=pgredhat
        ```
 
-3. **Monitor deployment**:
-   - **Wait time**: ~4 minutes for image pulls and startup
-   - Optional: Show container activity:
+3. **Review the deployment**:
+   - SSH to the device
+   - Check that the images were pulled:
      ```bash
-     # terminal 1
-     watch 'podman image list; echo ""; podman ps'
+     podman image list
      ```
-
+   - Check that containers are running:
      ```bash
-     # terminal 2
-     journalctl -f 
+     podman ps
      ```     
 
 4. **Verify application**:
    - Access pgAdmin: `http://device-ip:5050`
-   - Login with configured credentials
-   - Show pgAdmin version (9.5)
+   - Login with configured credentials (`pgadmin@none.com` / `pgredhat`)
+   - Show pgAdmin version (9.5) by click on the up menu in `Help` > `About pgAdmin 4`
    - Optional: Configure PostgreSQL connection
-
-
 
 
 ![step 5](step-5.png)
@@ -322,72 +293,48 @@ When to Use Runtime Configuration:
 
 ### Demo Steps
 
+1. **Check the running Image version**
+   - Log into the device
+   - Check the running version with `bootc status`
+
+2. Update the Fleet configuration
+   - Change application and image version to `v2` in fleet definition file that you are using under `rhem/fleets`, for example, if you used `kiosk`:
+
+```yaml
+...
+    spec:
+      applications:
+      - envVars:
+          PGADMIN_MAIL: pgadmin@none.com
+          PGADMIN_PW: pgredhat
+          POSTGRES_DB: postgres
+          POSTGRES_PW: pgadmin
+          POSTGRES_USER: pgredhat
+        image: ghcr.io/luisarizmendi/app-postgres:v2
+        name: postgres
+      config:
+...
+      os:
+        image: ghcr.io/luisarizmendi/device-kiosk:v2
+
+```
 
 
-
-
-5. **Demonstrate upgrade to v2**:
-   - Edit device application configuration
-   - Change image to: `app-postgres:v2`
-   - **Wait time**: ~2 minutes for upgrade
-   - Login to pgAdmin again, show version 9.6
-
-
-
-
-
-
-
-1. **Check current OS version**:
-   ```bash
-   # SSH to device
-   bootc status
-   # Note the current image version
-   ```
-
-2. **Configure OS image in RHEM**:
-   - Edit device in RHEM UI
-   - Set bootc image: `ghcr.io/luisarizmendi/device-demo-kvm:v2`
-   - Apply changes
-
-3. **Monitor upgrade process**:
-   - **Wait time**: ~5 minutes total
-   - Device downloads new image
-   - Stages update and reboots
+2. **Monitor upgrade process**:
+   - Wait until the device downloads new image, stages update and reboots (~ minutes)
    - Show RHEM UI status during process
 
-4. **Verify upgrade**:
-   ```bash
-   # After reboot, SSH to device
-   bootc status
-   # Confirm new image version
-   ```
-
-   Open `https://device-ip:9090` to show the Cockpit console.
-
-
+3. **Verify upgrade**:
+   - Log into the device.
+   - Check the running version with `bootc status`.
+   - If you instelled any new RPM (e.g. `tmux` or `cockpit`) try to use it.
+   - Open the pgAdmin application and check the version.
 
 ![step 6](step-6.png)
 
 
 ###  What to Mention
 - Benefits of bootc upgrades (atomic, consistent, and reproducible updates).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ---
