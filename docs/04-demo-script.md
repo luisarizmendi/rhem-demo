@@ -239,11 +239,11 @@ When to Use Runtime Configuration:
    - SSH to the device
    - Check that the images were pulled:
      ```bash
-     podman image list
+     sudo podman image list
      ```
    - Check that containers are running:
      ```bash
-     podman ps
+     sudo podman ps
      ```     
 
 4. **Verify application**:
@@ -264,23 +264,6 @@ When to Use Runtime Configuration:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ---
 
 ## 6. Operating System Upgrades (10 minutes)
@@ -294,8 +277,9 @@ When to Use Runtime Configuration:
 ### Demo Steps
 
 1. **Check the running Image version**
-   - Log into the device
-   - Check the running version with `bootc status`
+   - SSH into the device
+   - Check the running version with `sudo bootc status`
+   - Follow the Journal `journalctl -u flightctl-agent.service -f` and maintain it visible
 
 2. Update the Fleet configuration
    - Change application and image version to `v2` in fleet definition file that you are using under `rhem/fleets`, for example, if you used `kiosk`:
@@ -319,16 +303,27 @@ When to Use Runtime Configuration:
 
 ```
 
+3. **Push changes to the repo**:
+   ```bash
+   git add rhem/
+   git commit -m "new fleet version"
+   git push
+   ```
+
 
 2. **Monitor upgrade process**:
-   - Wait until the device downloads new image, stages update and reboots (~ minutes)
-   - Show RHEM UI status during process
+   - Check the console where you are following the Journal, you will see something like `msg="Fetching OS image: ghcr.io/luisarizmendi/device-kiosk:v2"`
+   - Wait until the device downloads new image for the device and the application, stages update and reboots. Time depends on conexion speed but it's something like ~6.5 minutes)
+   - Use this time to explain `bootc` and its benefits or coninue with the next step before coming back here.
 
 3. **Verify upgrade**:
-   - Log into the device.
-   - Check the running version with `bootc status`.
+   - SSH into the device after the reboot.
+   - Check the running version with `sudo bootc status`.
    - If you instelled any new RPM (e.g. `tmux` or `cockpit`) try to use it.
    - Open the pgAdmin application and check the version.
+
+   **Note:** The Application container could take some time to start.
+
 
 ![step 6](step-6.png)
 
@@ -352,16 +347,16 @@ When to Use Runtime Configuration:
 1. **Log into the Microshift VM**
    - Turn on the `microshift` VM and wait until QR appears in the VM console.
    - SSH into the VM with `admin / redhat` (if you didn't change defaults)
-   - Run the following command to check all PODs runnin in Microshift: `watch oc get pod -A`
+   - Run the following command to check all PODs runnin in Microshift: `sudo watch oc get pod -A`
    - Keep the output visible while you go through the next steps.
-   - Open a new SSH console and add your pull-secret: `vi /etc/crio/openshift-pull-secret` 
+   - Open a new SSH console and add your pull-secret: `sudo vi /etc/crio/openshift-pull-secret`. You might want to have all PODs in "Running" state.
 
 **Note:** The pull secret was not included [in the image](https://github.com/luisarizmendi/rhem-demo/blob/main/devices/microshift/files/etc/crio/openshift-pull-secret) or [in the fleet configuration](https://github.com/luisarizmendi/rhem-demo/blob/main/rhem/fleets/microshift.yaml) because the GitHub repo is public and there is no secret store configured for it, but the appropiate security measures you won't need this manual step.
 
 2. **Accept enrollment request**:
    - Open RHEM UI in ACM and open the enrollment request.
    - Assign the `microshift` fleet by adding the label `fleet=microshift` and accept the enrollment
-   - Check changes in the `watch` command output, you will see how Advance Cluster Management components are added to Microshift.
+   - Check changes in the `watch` command output, you will see how Advance Cluster Management components under `open-cluster-management-agent` namespace are added to Microshift.
    - **Wait time**: ~3 minutes for green status checks. You can use this time to explain the different ways ACM can manage k8s applications and clusters.
 
 3. **Assign labels to Microshift and add it to ClusterSet**:
@@ -369,7 +364,7 @@ When to Use Runtime Configuration:
    - Add the following labels to the cluster by click the three dots on the right of the cluster.
      - Your site label, either `site=na` or `site=emea`  
      - Your function label, either `function=pos` or `function=infra`
-   - Assign the Microshift cluster to the `stores` ClusterSet by XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   - Assign the Microshift cluster to the `stores` ClusterSet in the `Infrastructure > Clusters` menu under `Cluster sets` tab. Click the three dots on the right to the `stores` ClusterSet and click `Manage resource assignments`. Select the Microshift cluster and click "Review" and "Save".
 
 4. **Review device compliance**
    - Check in ACM `Governance` how the Policies were assigned to the device. It could take a couple of minutes.
