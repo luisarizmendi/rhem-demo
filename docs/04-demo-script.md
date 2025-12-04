@@ -72,10 +72,12 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ### Demo Steps
 
-1. **Create and boot VM**:
-   - Create VM: 1.5GB RAM, 2 vCPUs
-   - Boot from KVM device ISO
-   - **Wait time**: ~2:30 minutes for QR code appearance
+1. **Create and boot VMs**:
+
+   * Kiosk VM
+      - 1.5GB RAM, 2 vCPUs, 20 GB Disk
+      - Boot from KVM device ISO
+      - **Wait time**: ~2:30 minutes for QR code appearance
 
 2. **During boot wait, explain**:
    - USB with ISO boot simulation (could be PXE in production) instead of direct QCOW2 usage (for demo propouses)
@@ -85,7 +87,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 3. **Handle enrollment request**:
    - When QR appears, open RHEM UI
    - Show enrollment request with device details
-   - Accept the enrollment
+   - DO NOT accept the enrollment, that will be done in next step
    - **Wait time**: ~2 minutes for green status checks
 
 
@@ -93,6 +95,56 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 - No technical expertise required onsite
 - Simplified network configuration (outbound-only)
 - Scalable across hundreds/thousands of devices
+
+
+---
+
+## 3. Fleet Management (10 minutes)
+
+### Key Messages
+- Scale from individual devices to fleet operations
+- Template-based configuration for flexibility
+- Git-based fleet definitions (GitOps approach)
+- Label-based device assignment and configuration
+
+### Demo Steps
+
+1. **Create fleet from Git**:
+   - RHEM UI → Repositories
+   - Add repository pointing to `rhem/fleets`
+   - Show the `fleet.yaml` file while waiting for sync completion. 
+   - Show fleet in **Fleets** section
+
+3. **Deploy kiosk device**:
+   - Create new VM: 2.5GB RAM, 2 vCPUs
+   - Boot from **Kiosk** device ISO
+   - **Wait time**: Boot to kiosk app display
+
+4. **Enroll with fleet labels**:
+   - When enrollment appears, assign labels:
+     - `fleet=kiosk`
+     - `site=na` or `site=emea`  
+     - `function=<directory name under configs/function>`, for example `function=kiosk-energy`
+   - Accept enrollment
+
+5. **Verify fleet management**:
+   - **Wait time**: Several minutes for full configuration
+   - Device applies templated configuration based on labels
+   - Kiosk displays application based on function label
+   - Verify site-specific configs:
+     ```bash
+     # Check NTP configuration (varies by site)
+     cat /etc/chrony.conf
+     # Check container registry (varies by site) 
+     cat /etc/containers/registries.conf
+     ```
+
+### What to Mention
+- Single fleet definition supports multiple configurations
+- Reduces management overhead
+- Consistent policy application
+- Flexible device categorization
+
 
 ---
 
@@ -274,62 +326,6 @@ When to Use Runtime Configuration:
 - System health and connectivity status
 - Event logs and system metrics
 - Customizable alert thresholds and destinations
-
----
-
-## 7. Fleet Management (10 minutes)
-
-### Key Messages
-- Scale from individual devices to fleet operations
-- Template-based configuration for flexibility
-- Git-based fleet definitions (GitOps approach)
-- Label-based device assignment and configuration
-
-### Demo Steps
-
-1. **Create fleet from Git**:
-   - RHEM UI → Repositories
-   - Add repository pointing to `fleets/demo.yaml`
-   - Wait for sync completion
-   - Show fleet in **Fleets** section
-
-2. **Review fleet configuration**:
-   ```yaml
-   # Show key parts of fleets/demo.yaml
-   # - Label selectors (fleet=demo)
-   # - Template variables for site/function
-   # - Different configurations per location
-   ```
-
-3. **Deploy kiosk device**:
-   - Create new VM: 2.5GB RAM, 2 vCPUs
-   - Boot from **Kiosk** device ISO
-   - **Wait time**: Boot to kiosk app display
-
-4. **Enroll with fleet labels**:
-   - When enrollment appears, assign labels:
-     - `fleet=demo`
-     - `site=na` or `site=emea`  
-     - `function=<directory name under configs/function>`, for example `function=kiosk-energy`
-   - Accept enrollment
-
-5. **Verify fleet management**:
-   - **Wait time**: Several minutes for full configuration
-   - Device applies templated configuration based on labels
-   - Kiosk displays application based on function label
-   - Verify site-specific configs:
-     ```bash
-     # Check NTP configuration (varies by site)
-     cat /etc/chrony.conf
-     # Check container registry (varies by site) 
-     cat /etc/containers/registries.conf
-     ```
-
-### What to Mention
-- Single fleet definition supports multiple configurations
-- Reduces management overhead
-- Consistent policy application
-- Flexible device categorization
 
 ---
 

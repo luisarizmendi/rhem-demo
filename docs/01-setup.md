@@ -14,11 +14,26 @@ This guide walks through the initial setup required for the RHEM demo environmen
 
 ## Repository Configuration
 
-### 1. Fork and Clone Repository
+### 1. Fork and configure the repository
+
+Fork the repo in GitHub, then clone your forked repo:
 
 ```bash
 git clone https://github.com/luisarizmendi/rhem-demo
-cd rhem-demo
+cd <your repo>
+```
+Change `https://github.com/luisarizmendi/rhem-demo` URL references (original forked repository) to your own repo name:
+
+```bash
+grep -rl "luisarizmendi/rhem-demo" . | xargs sed -i 's|luisarizmendi/rhem-demo|luisarizmendi/rhem-demo|g'
+```
+
+Push changes:
+
+```bash
+git add .
+git commit -m "switch repo name"
+git push
 ```
 
 ### 2. Enable GitHub Actions Permissions

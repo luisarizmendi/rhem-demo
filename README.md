@@ -11,7 +11,7 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 - Built-in observability and remote troubleshooting
 - Secure pull-mode device communication
 
-**Demo Duration:** ~90 minutes
+**Demo Duration** ~120 minutes
 
 ## Demo Architecture
 
@@ -26,20 +26,17 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 ├── configs/       # Runtime configuration files
 ├── fleets/        # RHEM fleet definitions
 ├── docs/          # Documentation and guides
+├── infra/         # Infrastructure definition
 └── .github/       # CI/CD workflows for image building
 ```
 
 ## Quick Start
 
-1. **Clone and Configure**
-   ```bash
-   git clone https://github.com/luisarizmendi/rhem-demo
-   cd rhem-demo
-   ```
+1. **Fork and Configure the repo** - See [Setup Guide](docs/01-setup.md#1-fork-and-configure-the-repository)
 
-2. **Set up GitHub Actions** - See [Setup Guide](docs/01-setup.md)
+2. **Set up GitHub Actions** - See [Setup Guide](docs/01-setup.md#2-enable-github-actions-permissions)
 
-3. **Deploy RHEM** - Follow [RHEM Deployment](docs/02-rhem-deployment.md)
+3. **Deploy RHEM and infra** - Follow [RHEM Deployment](docs/02-rhem-deployment.md)
 
 4. **Prepare Demo Environment** - See [Demo Preparation](docs/03-demo-preparation.md)
 
@@ -51,13 +48,15 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 
 | Section | Duration | Key Features |
 |---------|----------|--------------|
-| [Device Image Building](docs/04-demo-script.md#building-device-images) | 5 min | Bootc image creation, GitHub Actions |
-| [Device Onboarding](docs/04-demo-script.md#device-onboarding) | 7 min | Zero-touch provisioning, enrollment |
-| [Configuration Management](docs/04-demo-script.md#configuration-management) | 5 min | Runtime config updates |
-| [Application Deployment](docs/04-demo-script.md#application-deployment) | 10 min | Container app management, upgrades |
-| [OS Updates](docs/04-demo-script.md#os-updates) | 7 min | Image-based OS upgrades |
-| [Observability](docs/04-demo-script.md#observability) | 3 min | Monitoring, remote access |
-| [Fleet Management](docs/04-demo-script.md#fleet-management) | 10 min | Multi-device management, templates |
+| [1. Device Image Building](docs/04-demo-script.md#building-device-images) | 5 min | Bootc image creation, GitHub Actions |
+| [2. Device Onboarding](docs/04-demo-script.md#device-onboarding) | 7 min | Zero-touch provisioning, enrollment |
+| [3. Fleets](docs/04-demo-script.md#fleet-management) | 10 min | Intro to Fleets |
+| [4. Configuration Management](docs/04-demo-script.md#configuration-management) | 5 min | Runtime config updates |
+| [5. Application Deployment](docs/04-demo-script.md#application-deployment) | 10 min | Container app management, upgrades |
+| [6. OS Updates](docs/04-demo-script.md#os-updates) | 7 min | Image-based OS upgrades |
+| [7. Observability](docs/04-demo-script.md#observability) | 3 min | Monitoring, remote access |
+| [8. Microshift with ACM](docs/04-demo-script.md#microshift) | 15 min | Microshift management with ACM |
+
 
 ## Requirements
 
