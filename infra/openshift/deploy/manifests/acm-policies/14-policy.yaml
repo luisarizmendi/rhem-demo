@@ -85,8 +85,8 @@ spec:
                     helm:
                       valueFiles:
                         - values.yaml
-                        - '{{hub printf "environment/function/values-%s.yaml" (index .ManagedClusterLabels "function") hub}}'
-                        - '{{hub printf "environment/site/values-%s.yaml" (index .ManagedClusterLabels "site") hub}}'
+                        - 'environment/function/values-{{hub (index .ManagedClusterLabels "function") hub}}.yaml'
+                        - 'environment/site/values-{{hub (index .ManagedClusterLabels "site") hub}}.yaml'
                   syncPolicy:
                     automated:
                       selfHeal: true

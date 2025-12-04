@@ -2,7 +2,19 @@
 
 A step-by-step guide for running the Red Hat Edge Manager demo. Each section includes timing, key points, and detailed steps.
 
-## Demo Introduction (5 minutes)
+## Summary
+
+0. [Demo Introduction](#0-demo-introduction-5-minutes)
+1. [Building Device Images](#1-building-device-images-10-minutes--background)
+2. [Device Onboarding](#2-device-onboarding-10-minutes)
+3. [Fleet Management](#3-fleet-management-10-minutes)
+4. [Check Configuration Management](#4-check-configuration-management-5-minutes)
+5. [Check Application Deployment](#5-check-application-deployment-10-minutes)
+6. [Operating System and Application Upgrades](#6-operating-system-and-application-upgrades-10-minutes)
+7. [Microshift management with ACM](#7-optional-microshift-management-with-acm-15-minutes)
+8. [Demo Wrap-up](#8-demo-wrap-up-5-minutes)
+
+## 0. Demo Introduction (5 minutes)
 
 ### Opening Points
 - Edge computing challenges: scale, remote locations, limited IT expertise
@@ -266,7 +278,7 @@ When to Use Runtime Configuration:
 
 ---
 
-## 6. Operating System Upgrades (10 minutes)
+## 6. Operating System and Application Upgrades (10 minutes)
 
 ### Key Messages
 - Bootc enables image-based OS updates
@@ -334,7 +346,25 @@ When to Use Runtime Configuration:
 
 ---
 
-## 7. Microshift management with ACM (15 minutes)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 7. [OPTIONAL] Microshift management with ACM (15 minutes)
+
+**Note:** You need RHEM integrated with ACM to follow these steps.
 
 ### Key Messages
 - RHEM is integrated with ACM to simplify k8s App management in RHDE
@@ -410,59 +440,9 @@ When to Use Runtime Configuration:
 
 
 
-
-
-
-
-
-
 ---
 
-## [OPTIONAL] 8. Device Observability (7 minutes)
-
-### Key Messages
-- Built-in device monitoring without additional setup
-- Remote terminal access through secure tunnel
-- No inbound firewall ports required
-- Customizable alerting thresholds
-
-### Demo Steps
-
-1. **Demonstrate terminal access**:
-   - Open device in RHEM UI
-   - Click **Terminal** tab
-   - **Wait time**: ~30-60 seconds for connection
-   - Access device shell remotely
-
-2. **Generate system load**:
-   ```bash
-   # On device terminal through RHEM UI
-   stress -c 4 &
-   ```
-
-3. **Continue to next section** (alarm will appear later)
-   - Monitoring takes time to detect sustained issues
-   - Explain alarm threshold configuration
-   - Point out monitoring dashboard when alarm appears
-
-
-
-![step 8](step-8.png)
-
-###  What to Mention
-- CPU, memory, disk utilization
-- System health and connectivity status
-- Event logs and system metrics
-- Customizable alert thresholds and destinations
-
-
-
-
-
-
----
-
-## Demo Wrap-up (5 minutes)
+## 8. Demo Wrap-up (5 minutes)
 
 ### Key Takeaways
 1. **Intuitive Operations**: User-friendly interface bridges IT skills gap
