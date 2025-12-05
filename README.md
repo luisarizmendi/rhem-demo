@@ -51,7 +51,7 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 | 0. [Demo Introduction](#0-demo-introduction-5-minutes)| 5 min | Demo Introduction |
 | 1. [Building Device Images](#1-building-device-images-10-minutes--background) | 10 min | Bootc image creation, GitHub Actions |
 | 2. [Device Onboarding](#2-device-onboarding-10-minutes) | 10 min | Zero-touch provisioning, enrollment |
-| 3. [Fleet Management](#3-fleet-management-10-minutes) | 10 min | Introduction to fleet management with RHEM |
+| 3. [Fleet Management](#3-fleet-management-10-minutes) | 10 min | Intro to fleet management with RHEM |
 | 4. [Check Configuration Management](#4-check-configuration-management-5-minutes) | 5 min | Runtime config update |
 | 5. [Check Application Deployment](#5-check-application-deployment-10-minutes) | 10 min | Container app management, upgrades |
 | 6. [Operating System and Application Upgrades](#6-operating-system-and-application-upgrades-10-minutes) | 10 min | Image-based OS and applicationupgrades |
