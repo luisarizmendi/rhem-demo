@@ -93,7 +93,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
    - Depending on the Images that you want to use, create one or multiple of these machines:
 
-   **Note:** If you want to demo Microshift, create either the `kiosk` or `kvm` VM to show RHEL configuration capabilities and one additional `microshift` VM to demo ACM integration. Maintain the `microshift` VM powered off until you start the Microshift management demo steps.
+   **Note:** If you want to demo Microshift, create either the `kiosk` or `kvm` VM to show RHEL configuration capabilities and one additional `microshift` VM to demo ACM integration (or modify the `microshift` fleet to add those as part of the definition). Maintain the `microshift` VM powered off until you start the Microshift management demo steps.
 
    These are the recommended resources for each type:
 
@@ -162,7 +162,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
      * Your function with `function=<directory name under configs/function>`, e.g. `function=kiosk-energy`
    - Accept enrollment
 
-   **Note:** The kiosk image has enabled the `kiosk-solvent-recovery` function by default, so if you want to see a change in the APP you should configure your label to a diffent value than that one.
+   **Note:** Fleet `kiosk` is recommended to show config and app deployment later. The kiosk image has enabled the `kiosk-solvent-recovery` function by default, so if you want to see a change in the APP you should configure your label to a diffent value than that one.
 
 3. **Wait for drift detection**:
    - Explain drift detection process
@@ -193,7 +193,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 ### Demo Steps
 
 1. **Show configuration config in fleet definion**:
-   - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the `config` section
+   - If you used the fleet `kiosk`, then Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the `config` section
    - Click Create a new Fleet in RHEM to show the Configuration management options
 
 

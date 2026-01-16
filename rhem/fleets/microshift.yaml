@@ -27,6 +27,11 @@ spec:
 #        inline:
 #        - path: "/etc/crio/openshift-pull-secret"
 #          content: "{\"auths\":{...}}"
+      - gitRef:
+          mountPath: /
+          path: /configs/microshift/site/{{ .metadata.labels.site }}
+          repository: rhem-demo
+          targetRevision: main
       - name: apply-acm-manifests
         inline:
         - path: "/etc/flightctl/hooks.d/afterupdating/50-acm-registration.yaml"
