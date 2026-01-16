@@ -27,8 +27,6 @@ RUN dnf config-manager \
 
 ################################################################################
 
-RUN dnf repolist all | grep -i gitops
-
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
