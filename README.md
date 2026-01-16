@@ -55,7 +55,7 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 | 4. [Check Configuration Management](docs/04-demo-script.md#4-check-configuration-management-5-minutes) | 5 min | Runtime config update |
 | 5. [Check Application Deployment](docs/04-demo-script.md#5-check-application-deployment-10-minutes) | 10 min | Container app management, upgrades |
 | 6. [Operating System and Application Upgrades](docs/04-demo-script.md#6-operating-system-and-application-upgrades-10-minutes) | 10 min | Image-based OS and applicationupgrades |
-| 7. [Microshift management with ACM](docs/04-demo-script.md#7-optional-microshift-management-with-acm-15-minutes) | 15 min | Microshift management with ACM |
+| 7. [Microshift management with ACM](docs/04-demo-script.md#7-optional-microshift-management-with-acm-20-minutes) | 15 min | Microshift management with ACM |
 | 8. [Demo Wrap-up](docs/04-demo-script.md#8-demo-wrap-up-5-minutes) | 5 min | Summary |
 
 
