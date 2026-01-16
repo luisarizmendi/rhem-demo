@@ -27,7 +27,8 @@ spec:
 #        inline:
 #        - path: "/etc/crio/openshift-pull-secret"
 #          content: "{\"auths\":{...}}"
-      - gitRef:
+      - name: site-conf
+        gitRef:
           mountPath: /
           path: /configs/microshift/site/{{ .metadata.labels.site }}
           repository: rhem-demo
