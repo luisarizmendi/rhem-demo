@@ -157,6 +157,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    - Back to `Devices` and click in `Approve`
    - Assign labels for:
      * Your fleet(`kvm`, `kiosk` or `microshift`), e.g `fleet=kiosk`
+   - If your fleet require more labels, configure them. For example in the fleet `kiosk` you should configure `site` and `function`
      * Your site with `site=na` or `site=emea`  
      * Your function with `function=<directory name under configs/function>`, e.g. `function=kiosk-energy`
    - Accept enrollment
