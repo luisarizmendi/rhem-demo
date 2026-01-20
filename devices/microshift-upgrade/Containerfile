@@ -22,11 +22,13 @@ RUN dnf config-manager \
 
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
-        --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms 
+        --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms && \
+    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm 
 
 RUN dnf install -y yq inotify-tools dialog firewalld microshift && \
     systemctl enable microshift && \
-    dnf clean all
+    dnf clean all && \
+    rm -rf /var/{cache,log} /var/lib/{dnf,rhsm} 
 
 COPY files/ /
 
