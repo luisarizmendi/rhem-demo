@@ -1,0 +1,5 @@
+- if:
+  - path: /etc/crio/openshift-pull-secret
+    op: [created, updated, removed]
+  run: systemctl restart microshift
+
