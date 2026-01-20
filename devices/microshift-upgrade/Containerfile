@@ -31,7 +31,9 @@ RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
 
-RUN dnf install -y xz yq podman-plugins inotify-tools firewalld microshift dialog \
+RUN dnf install -y xz yq podman-plugins inotify-tools firewalld dialog
+
+RUN dnf install -y microshift  \
     systemctl enable microshift && \
     dnf clean all
 
