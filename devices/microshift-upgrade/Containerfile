@@ -18,20 +18,13 @@ RUN dnf config-manager \
     systemctl enable flightctl-agent.service && \
     systemctl mask bootc-fetch-apply-updates.timer 
 
-# Optional: To enable podman-compose application support, uncomment below
- RUN dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-     dnf -y install podman-compose && \
-     dnf -y clean all && \
-     rm -rf /var/{cache,log} /var/lib/{dnf,rhsm} && \
-     systemctl enable podman.service
-
 ################################################################################
 
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
 
-RUN dnf install -y xz yq podman-plugins inotify-tools firewalld dialog
+RUN dnf install -y yq inotify-tools firewalld
 
 RUN dnf install -y microshift  \
     systemctl enable microshift && \
