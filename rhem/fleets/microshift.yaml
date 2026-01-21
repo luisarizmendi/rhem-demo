@@ -53,6 +53,8 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
           - "microshift.service"
+      os:
+        image: ghcr.io/luisarizmendi/device-microshift-upgrade:v1
 
 
 
