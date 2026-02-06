@@ -32,7 +32,7 @@ Once the environment is ready you will have access to RHEM under the `Edge Manag
 
 ### Option 2: RHEM Standalone Deployment Steps
 
-Follow the steps in the [Getting Started guide in the Flightctl repo](https://github.com/flightctl/flightctl/blob/main/docs/user/getting-started.md).
+For detailed installation information review the [Official RHEM on RHEL documentation](https://docs.redhat.com/es/documentation/red_hat_edge_manager/1.0/html/installing_red_hat_edge_manager_on_red_hat_enterprise_linux/index)
 
 
 #### Demo Environment Notes
