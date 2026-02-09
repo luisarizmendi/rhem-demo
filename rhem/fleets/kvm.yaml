@@ -41,7 +41,7 @@ spec:
           - "flightctl-agent.service"
           - "libvirt-vm*.service"
       os:
-        image: ghcr.io/luisarizmendi/device-rhel-kvm:v1
+        image: ghcr.io/luisarizmendi/device-rhel-kvm:latest-amd64
 
 
 
