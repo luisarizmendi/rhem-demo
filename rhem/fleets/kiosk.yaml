@@ -13,6 +13,13 @@ spec:
         fleet: kiosk
     spec:
       applications:
+      - appType: container
+        envVars: {}
+        image: ghcr.io/luisarizmendi/2048:v3
+        name: '2048'
+        ports:
+          - '8080:8080'
+        volumes: []
       - appType: compose
         envVars:
           PGADMIN_MAIL: pgadmin@none.com
