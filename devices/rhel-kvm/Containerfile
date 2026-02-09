@@ -9,7 +9,7 @@ FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 
 RUN dnf config-manager \
         --set-enabled edge-manager-1.0-for-rhel-9-x86_64-rpms && \
-    dnf -y install flightctl-agent flightctl && \
+    dnf -y install flightctl-agent flightctl-cli && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
     systemctl mask bootc-fetch-apply-updates.timer 
