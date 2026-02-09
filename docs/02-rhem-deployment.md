@@ -39,11 +39,6 @@ For detailed installation information review the [Official RHEM on RHEL document
 
 #### Demo Environment Notes
 
-**Important:** When presenting, explain that:
-- This is a standalone deployment for demo purposes. It uses less resources and you can deploy the latest capabilities in development 
-- Production deployments integrate with existing Red Hat platforms
-
-
 ## Red Hat Edge Manager and `flightctl-agent` versions:
 
 Be sure that you are using the same version in both Red Hat Edge Manager and `flightctl-agent` versions (on the device) in order to have capabilities aligned.
