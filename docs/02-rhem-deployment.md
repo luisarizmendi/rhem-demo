@@ -44,6 +44,15 @@ For detailed installation information review the [Official RHEM on RHEL document
 - Production deployments integrate with existing Red Hat platforms
 
 
+## Red Hat Edge Manager and `flightctl-agent` versions:
+
+Be sure that you are using the same version in both Red Hat Edge Manager and `flightctl-agent` versions (on the device) in order to have capabilities aligned.
+
+In your device Containerfiles you could install `flightctl-agent` from different repositories (e.g. `edge-manager-1.0-for-rhel-9-$(uname -m)-rpms` or `rhacm-${ACM_VER}-for-rhel-9-$(uname -m)-rpms`) and those could head into different versions.
+
+To be sure, if your device will be managed by a RHEM deployed on OpenShift with ACM integration, use the ACM repository in your bootc Containerfile to install the agent in your device, if not, use the edge-manager for RHEL repo.
+
+
 ## Obtain the `config.yaml` file:
 
 ```bash

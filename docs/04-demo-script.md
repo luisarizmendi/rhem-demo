@@ -233,7 +233,7 @@ When to Use Runtime Configuration:
 ### Demo Steps
 
 1. **Show application definition**:
-   Show the compose file and how it's packaged by reviewing repo files under `apps/compose/postgres`
+   Show the compose file and how it's packaged by reviewing repo files under `apps/podman/postgres`
 
 2. **Explain what was deployed into the Fleet**:
    - Open [rhem/fleets/kiosk.yaml](../rhem/fleets/kiosk.yaml) and show the `applications` section
