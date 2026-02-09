@@ -15,7 +15,7 @@ spec:
       applications:
       - appType: container
         envVars: {}
-        image: ghcr.io/luisarizmendi/2048:v3
+        image: quay.io/luisarizmendi/2048:v3
         name: '2048'
         ports:
           - '8080:8080'
