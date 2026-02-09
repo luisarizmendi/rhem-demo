@@ -32,6 +32,8 @@ Once the environment is ready you will have access to RHEM under the `Edge Manag
 
 ### Option 2: RHEM Standalone Deployment Steps
 
+**NOTE:** Do not use `localhost` as hostname. Be sure that you configure a hostname that can be resolved, the devices will need to find an ip out of this name. Be sure that you change the hostname before installing RHEM.
+
 For detailed installation information review the [Official RHEM on RHEL documentation](https://docs.redhat.com/es/documentation/red_hat_edge_manager/1.0/html/installing_red_hat_edge_manager_on_red_hat_enterprise_linux/index)
 
 
@@ -44,7 +46,6 @@ For detailed installation information review the [Official RHEM on RHEL document
 
 ## Obtain the `config.yaml` file:
 
-
 ```bash
 flightctl login --username=<your_user> --password=<your_password> --insecure-skip-tls-verify  https://<rhem_api_server_url>
 # or 
@@ -52,6 +53,9 @@ flightctl login --username=<your_user> --password=<your_password> --insecure-ski
 
 flightctl certificate request --signer=enrollment --expiration=365d --output=embedded > config.yaml
 ```
+
+**NOTE:** When using RHEM on RHEL, you will need to add the API port in the `rhem_api_server_url` (default is `3443`)
+
 
 
 ## Next Steps
