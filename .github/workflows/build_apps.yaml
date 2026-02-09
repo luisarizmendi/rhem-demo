@@ -11,9 +11,9 @@ on:
         required: false
         default: ''
       apps_directory:
-        description: 'Directory to monitor for changes (e.g., apps or apps/compose)'
+        description: 'Directory to monitor for changes (e.g., apps or apps/podman)'
         required: false
-        default: 'apps/compose'
+        default: 'apps/podman'
       image_prefix:
         description: 'Prefix for container image names'
         required: false
@@ -24,7 +24,7 @@ on:
 
 env:
   # Configuration variables - can be overridden by workflow_dispatch inputs
-  APPS_DIRECTORY: ${{ github.event.inputs.apps_directory || 'apps/compose' }}
+  APPS_DIRECTORY: ${{ github.event.inputs.apps_directory || 'apps/podman' }}
   IMAGE_PREFIX: ${{ github.event.inputs.image_prefix || 'app' }}
 
 jobs:
