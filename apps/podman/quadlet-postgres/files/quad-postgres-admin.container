@@ -1,11 +1,13 @@
 [Container]
 #////////////////////////////////////////
-#Image=docker.io/dpage/pgadmin4:9.5
+Image=docker.io/dpage/pgadmin4:9.5
 #DEMO V2 update (new image version) -> comment out version 9.5
-Image=docker.io/dpage/pgadmin4:9.6
+#Image=docker.io/dpage/pgadmin4:9.6
 #////////////////////////////////////////
 Network=quad-postgres-net.network
 PublishPort=5050:80
+Environment=PGADMIN_MAIL=admin@none.com
+Environment=PGADMIN_PW=secure
 
 [Service]
 Restart=always

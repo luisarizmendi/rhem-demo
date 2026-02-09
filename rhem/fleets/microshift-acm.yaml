@@ -2,15 +2,15 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels: {}
-  name: microshift
+  name: microshift-acm
 spec:
   selector:
     matchLabels:
-      fleet: "microshift"
+      fleet: "microshift-acm"
   template:
     metadata:
       labels:
-        fleet: microshift
+        fleet: microshift-acm
     spec:
       config:
       - name: acm-crd
