@@ -2,5 +2,5 @@ FROM scratch
 
 COPY files/* /
 
-# Required
+# Required 
 LABEL appType="quadlet"
