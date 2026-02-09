@@ -1,6 +1,6 @@
 FROM scratch
 
-COPY * /
+COPY files/* /
 
 # Required
 LABEL appType="quadlet"

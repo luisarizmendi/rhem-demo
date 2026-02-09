@@ -20,7 +20,7 @@ spec:
           POSTGRES_DB: postgres
           POSTGRES_PW: pgadmin
           POSTGRES_USER: pgredhat
-        image: ghcr.io/luisarizmendi/app-quad-postgres:v1
+        image: ghcr.io/luisarizmendi/app-quadlet-postgres:v1
         name: quad-postgres
         volumes: []
       config:
