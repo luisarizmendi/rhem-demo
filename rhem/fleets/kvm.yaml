@@ -13,7 +13,8 @@ spec:
         fleet: kvm
     spec:
       applications:
-      - envVars:
+      - appType: compose
+        envVars:
           PGADMIN_MAIL: pgadmin@none.com
           PGADMIN_PW: pgredhat
           POSTGRES_DB: postgres
