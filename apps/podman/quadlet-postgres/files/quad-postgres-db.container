@@ -4,7 +4,7 @@ Volume=quad-postgres-db.volume:/var/lib/postgresql/data:Z
 Network=quad-postgres-net.network
 PublishPort=5432:5432
 Environment=POSTGRES_DB=db
-Environment=POSTGRES_PW=secure
+Environment=POSTGRES_PASSWORD=secure
 Environment=POSTGRES_USER=dbuser
 
 [Service]
