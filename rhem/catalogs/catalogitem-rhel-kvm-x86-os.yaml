@@ -1,6 +1,4 @@
-apiVersion: flightctl.io/v1alpha1
-items:
-- apiVersion: flightctl.io/v1alpha1
+  apiVersion: flightctl.io/v1alpha1
   kind: CatalogItem
   metadata:
     annotations: {}
@@ -31,5 +29,4 @@ items:
       references:
         anaconda-iso: v1-amd64
       version: 1.0.0
-kind: CatalogItemList
-metadata: {}
+
