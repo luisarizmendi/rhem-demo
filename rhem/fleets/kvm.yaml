@@ -1,7 +1,10 @@
 apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
-  labels: {}
+  labels: 
+    postgres.app.catalog.flightctl.io/catalog: demo
+    postgres.app.catalog.flightctl.io/channel: test
+    postgres.app.catalog.flightctl.io/item: postgresql-quadlet
   name: kvm
 spec:
   selector:
@@ -21,7 +24,7 @@ spec:
           POSTGRES_PW: pgadmin
           POSTGRES_USER: pgredhat
         image: ghcr.io/luisarizmendi/app-quadlet-postgres:v1
-        name: quad-postgres
+        name: postgres
         volumes: []
       config:
       - name: motd-update
