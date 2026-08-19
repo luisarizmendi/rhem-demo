@@ -9,7 +9,7 @@
   spec:
     artifacts:
     - type: container
-      uri: ghcr.io/luisarizmendi/app-postgres
+      uri: ghcr.io/luisarizmendi/app-quadlet-postgres
     category: application
     displayName: 'PostgreSQL DB'
     documentationUrl: https://www.postgresql.org/docs/
@@ -37,3 +37,12 @@
       references:
         container: v1
       version: 1.0.0
+
+    defaults:
+      config:
+        envVars:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PW: "pgredhat"
+          POSTGRES_DB: "postgres"
+          PGADMIN_MAIL: "pgadmin@none.com"
+          PGADMIN_PW: "pgredhat"

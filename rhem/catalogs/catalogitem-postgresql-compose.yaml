@@ -39,3 +39,11 @@
       replaces: 1.0.0
       version: 2.0.0
 
+    defaults:
+      config:
+        envVars:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PW: "pgredhat"
+          POSTGRES_DB: "postgres"
+          PGADMIN_MAIL: "pgadmin@none.com"
+          PGADMIN_PW: "pgredhat"

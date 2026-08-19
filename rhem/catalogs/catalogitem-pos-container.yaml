@@ -24,3 +24,24 @@
         container: latest
       version: 1.0.0
 
+    defaults:
+        ports:
+          - "8080:8080"
+        resources:
+          requests:
+            memory: "512m"
+            cpu: "0.5"
+          limits:
+            memory: "2048m"
+            cpu: "1.0"
+
+      configSchema:
+        $schema: "http://json-schema.org/draft-07/schema#"
+        type: object
+        properties:
+          initial_dp:
+            type: number
+            description: Initial Differential Pressure in Pa
+            minimum: 0
+            maximum: 1000
+            default: 50
