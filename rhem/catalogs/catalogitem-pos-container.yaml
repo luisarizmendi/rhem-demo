@@ -5,7 +5,6 @@ items:
   metadata:
     annotations: {}
     catalog: demo
-    creationTimestamp: "2026-08-19T10:15:04.150181Z"
     labels:
       purpose: demo
     name: pos-container
