@@ -56,6 +56,6 @@ RUN firewall-offline-cmd --zone=trusted --add-source=10.42.0.0/16 && \
 #////////////////////////////////////////
 #DEMO V2 update (tmux )
 #////////////////////////////////////////
-#RUN dnf install -y tmux && \
-#    dnf clean all
+RUN dnf install -y tmux && \
+    dnf clean all
 #////////////////////////////////////////
