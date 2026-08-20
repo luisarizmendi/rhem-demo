@@ -3,7 +3,6 @@ ARG BASE_IMAGE_TAG='9.6'
 ########################################
 FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 
-
 ################################################################################
 #Red Hat Edge Manager
 ################################################################################
@@ -26,26 +25,25 @@ RUN dnf config-manager \
 # Customization
 ################################################################################
 
-RUN useradd -m -d /var/home/kiosk kiosk 
 
-RUN dnf install -y yq stress shadow-utils gnome-kiosk gdm gnome-kiosk-script-session  git firefox \
-    && dnf clean all
-
-RUN mkdir -p /var/home/kiosk/.local/bin/ /etc/accountsservice/user-templates /etc/gdm/
+RUN dnf install -y stress xz yq podman-plugins inotify-tools firewalld dialog && \
+    dnf clean all
 
 COPY files/ /
 
-RUN chmod +x /var/home/kiosk/.local/bin/gnome-kiosk-script && \
-    chown -R kiosk:kiosk /var/home/kiosk && \
-    chmod +x /usr/local/bin/* && \
+RUN chmod +x /usr/local/bin/* && \
     ln -s /usr/lib/systemd/system/first-boot.service /etc/systemd/system/multi-user.target.wants/first-boot.service && \
     ln -s /usr/lib/systemd/system/hook-files.service /etc/systemd/system/multi-user.target.wants/hook-files.service
 
-RUN systemctl set-default graphical.target
 
-#////////////////////////////////////////
-#DEMO V2 update (tmux )
-#////////////////////////////////////////
-#RUN dnf install -y tmux && \
+
+################################################################################
+# v2 (splitted here for demo)
+################################################################################
+
+#RUN dnf install -y cockpit cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
+#    systemctl enable cockpit.socket && \
+#    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
 #    dnf clean all
-#////////////////////////////////////////
+
+
