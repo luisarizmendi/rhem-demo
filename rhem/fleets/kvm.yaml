@@ -1,7 +1,10 @@
 apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
-  labels: 
+  labels:
+    os.catalog.flightctl.io/catalog: demo
+    os.catalog.flightctl.io/channel: test
+    os.catalog.flightctl.io/item: rhel-kvm-os
     postgres.app.catalog.flightctl.io/catalog: demo
     postgres.app.catalog.flightctl.io/channel: test
     postgres.app.catalog.flightctl.io/item: postgresql-quadlet

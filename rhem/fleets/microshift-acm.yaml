@@ -1,7 +1,13 @@
 apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
-  labels: {}
+  labels:
+    hello.app.catalog.flightctl.io/catalog: default
+    hello.app.catalog.flightctl.io/channel: test
+    hello.app.catalog.flightctl.io/item: hello-world-helm
+    os.catalog.flightctl.io/catalog: demo
+    os.catalog.flightctl.io/channel: test
+    os.catalog.flightctl.io/item: rhel-microshift-os
   name: microshift-acm
 spec:
   selector:
