@@ -7,148 +7,148 @@ on:
         required: true
         default: 'linux/amd64,linux/arm64'
       app_types:
-        description: 'App types to build (comma-separated, leave empty for all changed)'
+        description: 'App types to build (comma-separated). Only used when apps_directory is set.'
         required: false
         default: ''
       apps_directory:
-        description: 'Directory to monitor for changes (e.g., apps or apps/podman)'
+        description: 'Single directory to build from (e.g. apps/bundles). Leave empty to build from all configured groups based on changes.'
         required: false
-        default: 'apps/podman'
+        default: ''
       image_prefix:
-        description: 'Prefix for container image names'
+        description: 'Image prefix to use when apps_directory is set manually (ignored when apps_directory is empty)'
         required: false
         default: 'app'
+      source_subdir:
+        description: 'Subdirectory under each app type that holds the Containerfile and build context (e.g. "src"). Only used when apps_directory is set manually.'
+        required: false
+        default: ''
   push:
     branches:
       - main
 
 env:
-  # Configuration variables - can be overridden by workflow_dispatch inputs
-  APPS_DIRECTORY: ${{ github.event.inputs.apps_directory || 'apps/podman' }}
-  IMAGE_PREFIX: ${{ github.event.inputs.image_prefix || 'app' }}
+  # Directory -> image prefix mapping used for push builds, and for
+  # workflow_dispatch runs that don't specify a single apps_directory.
+  # "subdir" is the path under each app-type folder that holds the
+  # Containerfile and build context; use "" if the Containerfile sits
+  # directly in <directory>/<type>/.
+  # Add more entries here if you introduce another apps/* directory.
+  APP_GROUPS: '[{"directory":"apps/bundles","prefix":"app-bundle","subdir":""},{"directory":"apps/containers","prefix":"app","subdir":"src"}]'
 
 jobs:
-  # Detect changed app types
+  # Detect changed / requested apps across all configured groups
   detect-changes:
-    name: Detect changed app types
+    name: Detect changed apps
     runs-on: ubuntu-latest
     outputs:
-      app-types: ${{ steps.changes.outputs.app-types }}
+      apps-json: ${{ steps.changes.outputs.apps-json }}
       has-changes: ${{ steps.changes.outputs.has-changes }}
-      apps-directory: ${{ steps.changes.outputs.apps-directory }}
-      image-prefix: ${{ steps.changes.outputs.image-prefix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set configuration
-        id: config
-        run: |
-          APPS_DIR="${{ env.APPS_DIRECTORY }}"
-          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
-          
-          echo "apps-directory=$APPS_DIR" >> $GITHUB_OUTPUT
-          echo "image-prefix=$IMAGE_PREFIX" >> $GITHUB_OUTPUT
-          
-          echo "Using apps directory: $APPS_DIR"
-          echo "Using image prefix: $IMAGE_PREFIX"
-
-      - name: Detect changed app types
+      - name: Detect changed / requested apps
         id: changes
         run: |
           set -euo pipefail
-          
-          APPS_DIR="${{ env.APPS_DIRECTORY }}"
-          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
-          
-          echo "apps-directory=$APPS_DIR" >> $GITHUB_OUTPUT
-          echo "image-prefix=$IMAGE_PREFIX" >> $GITHUB_OUTPUT
-          
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Manual dispatch with specific types
+
+          APP_GROUPS='${{ env.APP_GROUPS }}'
+          APPS_JSON='[]'
+
+          add_app() {
+            local type="$1" dir="$2" prefix="$3" subdir="$4"
+            APPS_JSON=$(echo "$APPS_JSON" | jq -c --arg type "$type" --arg dir "$dir" --arg prefix "$prefix" --arg subdir "$subdir" \
+              '. + [{"type":$type,"directory":$dir,"prefix":$prefix,"subdir":$subdir}]')
+          }
+
+          build_path() {
+            # $1=dir $2=type $3=subdir -> the folder that should contain the Containerfile
+            if [ -n "$3" ]; then echo "$1/$2/$3"; else echo "$1/$2"; fi
+          }
+
+          has_containerfile() {
+            [ -f "$1/Containerfile" ] || [ -f "$1/containerfile" ]
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.apps_directory }}" ]; then
+            # --- Manual dispatch, single directory/prefix (original behavior) ---
+            DIR="${{ github.event.inputs.apps_directory }}"
+            PREFIX="${{ github.event.inputs.image_prefix }}"
+            [ -n "$PREFIX" ] || PREFIX="app"
+            SUBDIR="${{ github.event.inputs.source_subdir }}"
             APP_TYPES="${{ github.event.inputs.app_types }}"
-            
-            if [ -n "$APP_TYPES" ]; then
-              echo "Manual dispatch with app types: $APP_TYPES"
-            else
-              # If no specific types provided, build all available
-              APP_CHANGED_FILES=$(find "$APPS_DIR" -name "Containerfile" -o -name "containerfile" 2>/dev/null | head -20 || echo "")
-              
-              if [ -n "$APP_CHANGED_FILES" ]; then
-                APP_TYPES=$(echo "$APP_CHANGED_FILES" | grep -E "^${APPS_DIR}/[^/]+/" | sed "s|^${APPS_DIR}/\([^/]*\)/.*|\1|" | sort -u | tr '\n' ',' | sed 's/,$//')
+
+            if [ -z "$APP_TYPES" ]; then
+              for d in "$DIR"/*/; do
+                [ -d "$d" ] || continue
+                t=$(basename "$d")
+                has_containerfile "$(build_path "$DIR" "$t" "$SUBDIR")" && APP_TYPES="${APP_TYPES:+$APP_TYPES,}$t"
+              done
+            fi
+
+            IFS=',' read -ra TYPES <<< "$APP_TYPES"
+            for t in "${TYPES[@]}"; do
+              if has_containerfile "$(build_path "$DIR" "$t" "$SUBDIR")"; then
+                add_app "$t" "$DIR" "$PREFIX" "$SUBDIR"
+              else
+                echo "Skipping $DIR/$t: no Containerfile found under $(build_path "$DIR" "$t" "$SUBDIR")"
               fi
-            fi
+            done
+
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # --- Manual dispatch, no directory given: build every app in every group ---
+            for row in $(echo "$APP_GROUPS" | jq -c '.[]'); do
+              DIR=$(echo "$row" | jq -r '.directory')
+              PREFIX=$(echo "$row" | jq -r '.prefix')
+              SUBDIR=$(echo "$row" | jq -r '.subdir')
+              [ -d "$DIR" ] || continue
+              for d in "$DIR"/*/; do
+                [ -d "$d" ] || continue
+                t=$(basename "$d")
+                has_containerfile "$(build_path "$DIR" "$t" "$SUBDIR")" && add_app "$t" "$DIR" "$PREFIX" "$SUBDIR"
+              done
+            done
+
           else
-            # Detect changes automatically for push events
-            if [ "${{ github.event_name }}" = "push" ]; then
-              # For push events, compare with previous commit
-              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-            else
-              # Fallback - shouldn't reach here
-              CHANGED_FILES=""
-            fi
-            
+            # --- Push event: detect changed app types per configured group ---
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
             echo "Changed files:"
             echo "$CHANGED_FILES"
-            
-            # Extract unique app types from changed files in configured directory
-            # Only include types that currently exist in the repository
-            if echo "$CHANGED_FILES" | grep -q "^${APPS_DIR}/[^/]\+/"; then
-              POTENTIAL_APP_TYPES=$(echo "$CHANGED_FILES" | grep -E "^${APPS_DIR}/[^/]+/" | sed "s|^${APPS_DIR}/\([^/]*\)/.*|\1|" | sort -u)
-              APP_TYPES=""
-              for TYPE in $POTENTIAL_APP_TYPES; do
-                if [ -d "${APPS_DIR}/$TYPE" ] && ([ -f "${APPS_DIR}/$TYPE/Containerfile" ] || [ -f "${APPS_DIR}/$TYPE/containerfile" ]); then
-                  if [ -z "$APP_TYPES" ]; then
-                    APP_TYPES="$TYPE"
+
+            for row in $(echo "$APP_GROUPS" | jq -c '.[]'); do
+              DIR=$(echo "$row" | jq -r '.directory')
+              PREFIX=$(echo "$row" | jq -r '.prefix')
+              SUBDIR=$(echo "$row" | jq -r '.subdir')
+
+              if echo "$CHANGED_FILES" | grep -q "^${DIR}/[^/]\+/"; then
+                POTENTIAL_TYPES=$(echo "$CHANGED_FILES" | grep -E "^${DIR}/[^/]+/" | sed "s|^${DIR}/\([^/]*\)/.*|\1|" | sort -u)
+                for t in $POTENTIAL_TYPES; do
+                  if has_containerfile "$(build_path "$DIR" "$t" "$SUBDIR")"; then
+                    echo "Including changed app: $DIR/$t ($PREFIX-$t)"
+                    add_app "$t" "$DIR" "$PREFIX" "$SUBDIR"
                   else
-                    APP_TYPES="$APP_TYPES,$TYPE"
+                    echo "Skipping deleted/invalid app: $DIR/$t"
                   fi
-                  echo "Including existing app type: $TYPE"
-                else
-                  echo "Skipping deleted/invalid app type: $TYPE"
-                fi
-              done
-            else
-              APP_TYPES=""
-            fi
+                done
+              fi
+            done
           fi
-          
-          if [ -z "$APP_TYPES" ]; then
-            echo "No app type changes detected (or all changes were deletions)"
+
+          APP_COUNT=$(echo "$APPS_JSON" | jq 'length')
+          if [ "$APP_COUNT" -eq 0 ]; then
+            echo "No app changes detected"
             echo "has-changes=false" >> $GITHUB_OUTPUT
-            echo "app-types=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          echo "App types to build: $APP_TYPES"
-          echo "has-changes=true" >> $GITHUB_OUTPUT
-          echo "app-types=$APP_TYPES" >> $GITHUB_OUTPUT
-
-      - name: Validate app types
-        run: |
-          APPS_DIR="${{ env.APPS_DIRECTORY }}"
-          
-          if [ "${{ steps.changes.outputs.has-changes }}" = "true" ]; then
-            # Validate app types (should all exist now since we filtered above)
-            if [ -n "${{ steps.changes.outputs.app-types }}" ]; then
-              IFS=',' read -ra TYPES <<< "${{ steps.changes.outputs.app-types }}"
-              for TYPE in "${TYPES[@]}"; do
-                if [ ! -d "${APPS_DIR}/$TYPE" ]; then
-                  echo "Error: ${APPS_DIR}/$TYPE directory does not exist"
-                  exit 1
-                fi
-                if [ ! -f "${APPS_DIR}/$TYPE/Containerfile" ] && [ ! -f "${APPS_DIR}/$TYPE/containerfile" ]; then
-                  echo "Error: No Containerfile found in ${APPS_DIR}/$TYPE"
-                  exit 1
-                fi
-              done
-              echo "All app types validated successfully"
-            fi
+            echo "apps-json=[]" >> $GITHUB_OUTPUT
+          else
+            echo "Apps to build:"
+            echo "$APPS_JSON" | jq .
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "apps-json=$(echo "$APPS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
           fi
 
-  # Determine version tags for each app type
+  # Determine version tags for each app (keyed by <prefix>-<type>, i.e. the image name)
   determine-versions:
     name: Determine version tags
     runs-on: ubuntu-latest
@@ -170,62 +170,42 @@ jobs:
         id: versions
         run: |
           set -euo pipefail
-          
-          IMAGE_PREFIX="${{ needs.detect-changes.outputs.image-prefix }}"
-          
-          # Initialize versions JSON object
-          APP_VERSIONS_JSON='{'
-          APP_FIRST=true
-          
-          # Process app types
-          if [ -n "${{ needs.detect-changes.outputs.app-types }}" ]; then
-            IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
-            
-            for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="${IMAGE_PREFIX}-${APP_TYPE}"
-              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
-              
-              echo "Determining version for app type: $APP_TYPE"
-              echo "Image base: $IMAGE_BASE"
-              
-              # Get existing tags from the registry
-              EXISTING_TAGS=""
-              if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
-                EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json | \
-                  grep -oE '^v[0-9]+$' | \
-                  sort -V || echo "")
-              fi
-              
-              if [ -z "$EXISTING_TAGS" ]; then
-                echo "No existing version tags found for app $APP_TYPE, starting with v1"
-                NEXT_VERSION="v1"
-              else
-                # Find the highest version number
-                HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
-                HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
-                NEXT_NUM=$((HIGHEST_NUM + 1))
-                NEXT_VERSION="v${NEXT_NUM}"
-                echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
-              fi
-              
-              # Add to JSON object
-              if [ "$APP_FIRST" = false ]; then
-                APP_VERSIONS_JSON="${APP_VERSIONS_JSON},"
-              fi
-              APP_FIRST=false
-              
-              APP_VERSIONS_JSON="${APP_VERSIONS_JSON}\"${APP_TYPE}\":\"${NEXT_VERSION}\""
-              
-              echo "App type $APP_TYPE will use version: $NEXT_VERSION"
-            done
-          fi
-          
-          APP_VERSIONS_JSON="${APP_VERSIONS_JSON}}"
-          
-          echo "app-versions=$APP_VERSIONS_JSON" >> $GITHUB_OUTPUT
-          echo "Final app versions JSON: $APP_VERSIONS_JSON"
 
-  # Setup job: Parse build parameters
+          APPS_JSON='${{ needs.detect-changes.outputs.apps-json }}'
+          VERSIONS_JSON='{}'
+
+          for row in $(echo "$APPS_JSON" | jq -c '.[]'); do
+            TYPE=$(echo "$row" | jq -r '.type')
+            DIR=$(echo "$row" | jq -r '.directory')
+            PREFIX=$(echo "$row" | jq -r '.prefix')
+            IMAGE_NAME="${PREFIX}-${TYPE}"
+            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+
+            echo "Determining version for $DIR ($IMAGE_BASE)"
+
+            EXISTING_TAGS=""
+            if skopeo list-tags "docker://${IMAGE_BASE}" >/tmp/tags.json 2>/dev/null; then
+              EXISTING_TAGS=$(jq -r '.Tags[]' /tmp/tags.json | grep -oE '^v[0-9]+$' | sort -V || echo "")
+            fi
+
+            if [ -z "$EXISTING_TAGS" ]; then
+              echo "No existing version tags found, starting with v1"
+              NEXT_VERSION="v1"
+            else
+              HIGHEST_VERSION=$(echo "$EXISTING_TAGS" | tail -n1)
+              HIGHEST_NUM=$(echo "$HIGHEST_VERSION" | sed 's/v//')
+              NEXT_VERSION="v$((HIGHEST_NUM + 1))"
+              echo "Highest existing version: $HIGHEST_VERSION, next version: $NEXT_VERSION"
+            fi
+
+            VERSIONS_JSON=$(echo "$VERSIONS_JSON" | jq -c --arg k "$IMAGE_NAME" --arg v "$NEXT_VERSION" '. + {($k): $v}')
+          done
+
+          echo "app-versions=$(echo "$VERSIONS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "Final app versions:"
+          echo "$VERSIONS_JSON" | jq .
+
+  # Setup job: build the platform x app build matrix
   setup:
     name: Setup build parameters
     runs-on: ubuntu-latest
@@ -234,60 +214,47 @@ jobs:
     outputs:
       platforms: ${{ steps.setup.outputs.platforms }}
       matrix: ${{ steps.setup.outputs.matrix }}
-      app-types: ${{ needs.detect-changes.outputs.app-types }}
+      apps-json: ${{ needs.detect-changes.outputs.apps-json }}
       app-versions: ${{ needs.determine-versions.outputs.app-versions }}
-      apps-directory: ${{ needs.detect-changes.outputs.apps-directory }}
-      image-prefix: ${{ needs.detect-changes.outputs.image-prefix }}
     steps:
       - name: Setup build parameters
         id: setup
         run: |
-          # Set platforms (from input or default)
+          set -euo pipefail
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             PLATFORMS="${{ github.event.inputs.platforms }}"
           else
             PLATFORMS="linux/amd64,linux/arm64"
           fi
-          
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
           echo "Building for platforms: $PLATFORMS"
-          
-          # Create matrix for build jobs (platform x app type combinations)
-          MATRIX='{"include":['
-          FIRST=true
-          
-          IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
-          
-          # Add app types to matrix
-          if [ -n "${{ needs.detect-changes.outputs.app-types }}" ]; then
-            IFS=',' read -ra APP_ARRAY <<< "${{ needs.detect-changes.outputs.app-types }}"
-            
-            for APP_TYPE in "${APP_ARRAY[@]}"; do
-              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-                ARCH="${PLATFORM#linux/}"
-                
-                if [ "$FIRST" = false ]; then
-                  MATRIX="${MATRIX},"
-                fi
-                FIRST=false
-                
-                if [ "$ARCH" = "arm64" ]; then
-                  RUNNER="ubuntu-24.04-arm"
-                else
-                  RUNNER="ubuntu-latest"
-                fi
-                
-                MATRIX="${MATRIX}{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"type\":\"$APP_TYPE\"}"
-              done
-            done
-          fi
-          
-          MATRIX="${MATRIX}]}"
-          
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Matrix: $MATRIX"
 
-  # Matrix job: Build the container images for each platform and app type
+          APPS_JSON='${{ needs.detect-changes.outputs.apps-json }}'
+
+          MATRIX=$(jq -nc --argjson apps "$APPS_JSON" --arg platforms "$PLATFORMS" '
+            ($platforms | split(",")) as $plats |
+            {
+              include: [
+                $apps[] as $app |
+                $plats[] as $platform |
+                {
+                  platform: $platform,
+                  arch: ($platform | sub("^linux/"; "")),
+                  runner: (if ($platform | sub("^linux/"; "")) == "arm64" then "ubuntu-24.04-arm" else "ubuntu-latest" end),
+                  type: $app.type,
+                  directory: $app.directory,
+                  prefix: $app.prefix,
+                  subdir: $app.subdir
+                }
+              ]
+            }')
+
+          echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "Matrix:"
+          echo "$MATRIX" | jq .
+
+  # Matrix job: build the container image for each platform x app combination
   build-image:
     name: Build app container image
     needs: setup
@@ -299,12 +266,9 @@ jobs:
       image: ${{ steps.build.outputs.image }}
       tags: ${{ steps.build.outputs.tags }}
     env:
-      IMAGE_NAME: ${{ needs.setup.outputs.image-prefix }}-${{ matrix.type }}
+      IMAGE_NAME: ${{ matrix.prefix }}-${{ matrix.type }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
-      APPS_DIRECTORY: ${{ needs.setup.outputs.apps-directory }}
-      # Disable Subscription Manager container passthrough
       SMDEV_CONTAINER_OFF: 1
-      # Source registry for base image
       SOURCE_REGISTRY_HOST: "registry.redhat.io"
     container:
       image: registry.access.redhat.com/ubi9/ubi
@@ -329,30 +293,35 @@ jobs:
             subscription-manager register --username=${{ secrets.RH_USERNAME }} --password=${{ secrets.RH_PASSWORD }}
           fi
 
-      - name: Get version for this app type
+      - name: Get version for this app
         id: version
         run: |
-          # Extract version from the app versions JSON
           VERSIONS='${{ needs.setup.outputs.app-versions }}'
-          VERSION=$(echo "$VERSIONS" | jq -r '."${{ matrix.type }}"')
+          VERSION=$(echo "$VERSIONS" | jq -r '."${{ env.IMAGE_NAME }}"')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version for app ${{ matrix.type }}: $VERSION"
+          echo "Version for ${{ env.IMAGE_NAME }}: $VERSION"
 
       - name: Verify Containerfile exists
         run: |
-          APPS_DIR="${{ env.APPS_DIRECTORY }}"
-          CONTAINERFILE_PATH=""
-          
-          if [ -f "${APPS_DIR}/${{ matrix.type }}/Containerfile" ]; then
-            CONTAINERFILE_PATH="${APPS_DIR}/${{ matrix.type }}/Containerfile"
-          elif [ -f "${APPS_DIR}/${{ matrix.type }}/containerfile" ]; then
-            CONTAINERFILE_PATH="${APPS_DIR}/${{ matrix.type }}/containerfile"
+          DIR="${{ matrix.directory }}"
+          TYPE="${{ matrix.type }}"
+          SUBDIR="${{ matrix.subdir }}"
+          if [ -n "$SUBDIR" ]; then
+            BUILD_PATH="${DIR}/${TYPE}/${SUBDIR}"
           else
-            echo "Error: No Containerfile found in ${APPS_DIR}/${{ matrix.type }}"
+            BUILD_PATH="${DIR}/${TYPE}"
+          fi
+
+          if [ -f "${BUILD_PATH}/Containerfile" ]; then
+            echo "CONTAINERFILE_PATH=${BUILD_PATH}/Containerfile" >> $GITHUB_ENV
+          elif [ -f "${BUILD_PATH}/containerfile" ]; then
+            echo "CONTAINERFILE_PATH=${BUILD_PATH}/containerfile" >> $GITHUB_ENV
+          else
+            echo "Error: No Containerfile found in ${BUILD_PATH}"
             exit 1
           fi
-          echo "CONTAINERFILE_PATH=$CONTAINERFILE_PATH" >> $GITHUB_ENV
-          echo "Using Containerfile: $CONTAINERFILE_PATH"
+          echo "BUILD_CONTEXT=${BUILD_PATH}" >> $GITHUB_ENV
+          echo "Using build context: ${BUILD_PATH}"
 
       # workaround for https://github.com/redhat-actions/podman-login/issues/42
       - name: Workaround open podman-login action issue
@@ -395,7 +364,7 @@ jobs:
             ${{ steps.version.outputs.version }}-${{ matrix.arch }}
             ${{ steps.arch-tag.outputs.arch-tag }}
           platforms: ${{ matrix.platform }}
-          context: ${{ env.APPS_DIRECTORY }}/${{ matrix.type }}
+          context: ${{ env.BUILD_CONTEXT }}
           containerfiles: |
             ${{ env.CONTAINERFILE_PATH }}
 
@@ -419,14 +388,13 @@ jobs:
         if: always()
         run: subscription-manager unregister
 
-  # Job: Create multi-platform manifest for each app type
+  # Job: Create multi-platform manifest for each app
   create-manifest:
     name: Create multi-platform manifests
     needs: [setup, build-image]
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}
-      IMAGE_PREFIX: ${{ needs.setup.outputs.image-prefix }}
     steps:
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
@@ -438,82 +406,54 @@ jobs:
       - name: Create and push multi-platform manifests
         run: |
           set -euo pipefail
-          
-          IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
-          
-          # Process app types
-          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
-            IFS=',' read -ra APP_ARRAY <<< "${{ needs.setup.outputs.app-types }}"
-            APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
-            
-            for APP_TYPE in "${APP_ARRAY[@]}"; do
-              IMAGE_NAME="${IMAGE_PREFIX}-${APP_TYPE}"
-              IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
-              LATEST_MANIFEST="${IMAGE_BASE}:latest"
-              SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
-              
-              # Get version for this app type
-              VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
-              VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
-              
-              echo "Creating multi-platform manifests for app type: $APP_TYPE"
-              echo "Latest manifest: $LATEST_MANIFEST"
-              echo "SHA manifest: $SHA_MANIFEST"
-              echo "Version manifest: $VERSION_MANIFEST"
-              
-              # Remove existing manifests if they exist
-              podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
-              podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
-              podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
-              
-              # Create new manifests
-              podman manifest create "$LATEST_MANIFEST"
-              podman manifest create "$SHA_MANIFEST"
-              podman manifest create "$VERSION_MANIFEST"
-              
-              # Add platform-specific images to manifests
-              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
-              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-                ARCH="${PLATFORM#linux/}"
-                PLATFORM_LATEST="${IMAGE_BASE}:latest-${ARCH}"
-                PLATFORM_SHA="${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
-                PLATFORM_VERSION="${IMAGE_BASE}:${VERSION}-${ARCH}"
-                
-                # Set architecture tag
-                if [ "$ARCH" = "amd64" ]; then
-                  ARCH_TAG="x86"
-                elif [ "$ARCH" = "arm64" ]; then
-                  ARCH_TAG="arm"
-                else
-                  ARCH_TAG="$ARCH"
-                fi
-                
-                echo "Processing platform: $PLATFORM (arch: $ARCH, tag: $ARCH_TAG) for app: $APP_TYPE"
-                echo "  Adding $PLATFORM_LATEST to latest manifest"
-                echo "  Adding $PLATFORM_SHA to SHA manifest"
-                echo "  Adding $PLATFORM_VERSION to version manifest"
-                echo "  Architecture tag: ${IMAGE_BASE}:${ARCH_TAG}"
-                
-                # Add to manifests with proper architecture specification
-                podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://$PLATFORM_LATEST"
-                podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://$PLATFORM_SHA"
-                podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://$PLATFORM_VERSION"
-              done
-              
-              echo "Inspecting created manifests for app $APP_TYPE..."
-              podman manifest inspect "$LATEST_MANIFEST"
-              podman manifest inspect "$SHA_MANIFEST"
-              podman manifest inspect "$VERSION_MANIFEST"
-              
-              echo "Pushing multi-platform manifests for app $APP_TYPE..."
-              podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
-              podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
-              podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
-              
-              echo "Multi-platform manifests for app $APP_TYPE created and pushed successfully!"
-              echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
+
+          APPS_JSON='${{ needs.setup.outputs.apps-json }}'
+          APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
+          PLATFORMS="${{ needs.setup.outputs.platforms }}"
+
+          for row in $(echo "$APPS_JSON" | jq -c '.[]'); do
+            TYPE=$(echo "$row" | jq -r '.type')
+            PREFIX=$(echo "$row" | jq -r '.prefix')
+            IMAGE_NAME="${PREFIX}-${TYPE}"
+            IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
+            VERSION=$(echo "$APP_VERSIONS" | jq -r --arg k "$IMAGE_NAME" '.[$k]')
+
+            LATEST_MANIFEST="${IMAGE_BASE}:latest"
+            SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
+            VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
+
+            echo "Creating multi-platform manifests for $IMAGE_NAME"
+
+            podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
+            podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
+            podman manifest rm "$VERSION_MANIFEST" 2>/dev/null || true
+
+            podman manifest create "$LATEST_MANIFEST"
+            podman manifest create "$SHA_MANIFEST"
+            podman manifest create "$VERSION_MANIFEST"
+
+            IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+              ARCH="${PLATFORM#linux/}"
+              echo "  Adding $ARCH images for $IMAGE_NAME"
+              podman manifest add --arch "$ARCH" --os "linux" "$LATEST_MANIFEST" "docker://${IMAGE_BASE}:latest-${ARCH}"
+              podman manifest add --arch "$ARCH" --os "linux" "$SHA_MANIFEST" "docker://${IMAGE_BASE}:${{ github.sha }}-${ARCH}"
+              podman manifest add --arch "$ARCH" --os "linux" "$VERSION_MANIFEST" "docker://${IMAGE_BASE}:${VERSION}-${ARCH}"
             done
-          fi
+
+            echo "Inspecting created manifests for $IMAGE_NAME..."
+            podman manifest inspect "$LATEST_MANIFEST"
+            podman manifest inspect "$SHA_MANIFEST"
+            podman manifest inspect "$VERSION_MANIFEST"
+
+            echo "Pushing multi-platform manifests for $IMAGE_NAME..."
+            podman manifest push --all "$LATEST_MANIFEST" "docker://$LATEST_MANIFEST"
+            podman manifest push --all "$SHA_MANIFEST" "docker://$SHA_MANIFEST"
+            podman manifest push --all "$VERSION_MANIFEST" "docker://$VERSION_MANIFEST"
+
+            echo "Multi-platform manifests for $IMAGE_NAME created and pushed successfully!"
+            echo "Available tags: latest, ${{ github.sha }}, ${VERSION}"
+          done
 
   # Summary job
   summary:
@@ -527,59 +467,41 @@ jobs:
       - name: Print build summary
         if: needs.detect-changes.outputs.has-changes == 'true'
         run: |
-          IMAGE_PREFIX="${{ needs.detect-changes.outputs.image-prefix }}"
-          APPS_DIR="${{ needs.detect-changes.outputs.apps-directory }}"
-          
+          APPS_JSON='${{ needs.setup.outputs.apps-json }}'
+          APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
+          PLATFORMS="${{ needs.setup.outputs.platforms }}"
+
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
-          echo "- Apps Directory: \`$APPS_DIR\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Image Prefix: \`$IMAGE_PREFIX\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Platforms: $PLATFORMS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "### App Types Built" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
-            echo "- App Types: ${{ needs.setup.outputs.app-types }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- Platforms: ${{ needs.setup.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "### Multi-platform Images" >> $GITHUB_STEP_SUMMARY
-          
-          # App types summary
-          if [ -n "${{ needs.setup.outputs.app-types }}" ]; then
-            IFS=',' read -ra APP_ARRAY <<< "${{ needs.setup.outputs.app-types }}"
-            APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
-            
-            for APP_TYPE in "${APP_ARRAY[@]}"; do
-              VERSION=$(echo "$APP_VERSIONS" | jq -r ".\"${APP_TYPE}\"")
-              echo "#### App Type: $APP_TYPE" >> $GITHUB_STEP_SUMMARY
-              echo "- Latest: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:latest" >> $GITHUB_STEP_SUMMARY
-              echo "- SHA: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-              echo "- Version: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${VERSION}" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              
-              echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
-              IFS=',' read -ra PLATFORM_ARRAY <<< "${{ needs.setup.outputs.platforms }}"
-              for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
-                ARCH="${PLATFORM#linux/}"
-                # Set architecture tag
-                if [ "$ARCH" = "amd64" ]; then
-                  ARCH_TAG="x86"
-                elif [ "$ARCH" = "arm64" ]; then
-                  ARCH_TAG="arm"
-                else
-                  ARCH_TAG="$ARCH"
-                fi
-                echo "- $ARCH latest: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH SHA: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH version: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
-                echo "- $ARCH specific: ${{ env.REGISTRY }}/${IMAGE_PREFIX}-${APP_TYPE}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
-              done
-              echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Apps Built" >> $GITHUB_STEP_SUMMARY
+
+          for row in $(echo "$APPS_JSON" | jq -c '.[]'); do
+            TYPE=$(echo "$row" | jq -r '.type')
+            DIR=$(echo "$row" | jq -r '.directory')
+            PREFIX=$(echo "$row" | jq -r '.prefix')
+            IMAGE_NAME="${PREFIX}-${TYPE}"
+            VERSION=$(echo "$APP_VERSIONS" | jq -r --arg k "$IMAGE_NAME" '.[$k]')
+
+            echo "#### $DIR/$TYPE ($IMAGE_NAME)" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest: ${{ env.REGISTRY }}/${IMAGE_NAME}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "- SHA: ${{ env.REGISTRY }}/${IMAGE_NAME}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Version: ${{ env.REGISTRY }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+
+            echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
+            IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+            for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
+              ARCH="${PLATFORM#linux/}"
+              if [ "$ARCH" = "amd64" ]; then ARCH_TAG="x86"; elif [ "$ARCH" = "arm64" ]; then ARCH_TAG="arm"; else ARCH_TAG="$ARCH"; fi
+              echo "- $ARCH latest: ${{ env.REGISTRY }}/${IMAGE_NAME}:latest-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH SHA: ${{ env.REGISTRY }}/${IMAGE_NAME}:${{ github.sha }}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH version: ${{ env.REGISTRY }}/${IMAGE_NAME}:${VERSION}-${ARCH}" >> $GITHUB_STEP_SUMMARY
+              echo "- $ARCH specific: ${{ env.REGISTRY }}/${IMAGE_NAME}:${ARCH_TAG}" >> $GITHUB_STEP_SUMMARY
             done
-          fi
-          
-          echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "### Job Status" >> $GITHUB_STEP_SUMMARY
           echo "- Change Detection: ${{ needs.detect-changes.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Version Determination: ${{ needs.determine-versions.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
@@ -589,29 +511,12 @@ jobs:
       - name: Print no changes message
         if: needs.detect-changes.outputs.has-changes == 'false'
         run: |
-          APPS_DIR="${{ needs.detect-changes.outputs.apps-directory }}"
-          
           echo "## No Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "No changes were detected in any app type directories under \`$APPS_DIR/\`." >> $GITHUB_STEP_SUMMARY
+          echo "No app-type changes were detected in the configured directories." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Available App Types" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -d "$APPS_DIR" ]; then
-            for dir in ${APPS_DIR}/*/; do
-              if [ -d "$dir" ]; then
-                app_name=$(basename "$dir")
-                echo "- \`$app_name\`" >> $GITHUB_STEP_SUMMARY
-              fi
-            done
-          else
-            echo "No $APPS_DIR directory found." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Configured groups" >> $GITHUB_STEP_SUMMARY
+          echo '${{ env.APP_GROUPS }}' | jq -r '.[] | "- `\(.directory)` -> `\(.prefix)-<type>`"' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
           echo "**To trigger a build:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Make changes to files in any \`${APPS_DIR}/{type}/\` directory, or" >> $GITHUB_STEP_SUMMARY
-          echo "- Run workflow manually and specify app types to build" >> $GITHUB_STEP_SUMMARY
-
-      - name: Checkout for no-changes summary
-        if: needs.detect-changes.outputs.has-changes == 'false'
-        uses: actions/checkout@v4
+          echo "- Push changes to any \`{directory}/{type}/\` under a configured group, or" >> $GITHUB_STEP_SUMMARY
+          echo "- Run the workflow manually" >> $GITHUB_STEP_SUMMARY
