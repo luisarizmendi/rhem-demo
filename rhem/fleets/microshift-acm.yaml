@@ -18,6 +18,10 @@ spec:
       labels:
         fleet: microshift-acm
     spec:
+      applications:
+        - name: hello
+          image: ghcr.io/luisarizmendi/app-bundle-hello-helm:v1
+          appType: helm
       config:
       - name: acm-crd
         httpRef:
@@ -60,7 +64,7 @@ spec:
           - "flightctl-agent.service"
           - "microshift.service"
       os:
-        image: ghcr.io/luisarizmendi/device-microshift-upgrade:v1
+        image: ghcr.io/luisarizmendi/device-microshift:v1
 
 
 

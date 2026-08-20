@@ -22,13 +22,11 @@ spec:
         fleet: kiosk
     spec:
       applications:
-      - appType: container
-        envVars: {}
-        image: quay.io/luisarizmendi/2048:v3
-        name: '2048'
+      - name: pos
+        image: ghcr.io/luisarizmendi/app-pos:v1
         ports:
-          - '8081:8081'
-        volumes: []
+          - '8080:8080'
+        appType: container
       - appType: compose
         envVars:
           PGADMIN_MAIL: pgadmin@none.com
@@ -61,7 +59,7 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: ghcr.io/luisarizmendi/device-kiosk:v1-amd64
+        image: ghcr.io/luisarizmendi/device-kiosk:v1
 
 
 
