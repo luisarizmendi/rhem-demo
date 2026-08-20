@@ -1,0 +1,6 @@
+FROM scratch
+
+COPY files/* /
+
+# Required 
+LABEL appType="helm"

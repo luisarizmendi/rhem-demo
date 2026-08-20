@@ -9,7 +9,7 @@
   spec:
     artifacts:
     - type: container
-      uri: ghcr.io/luisarizmendi/app-quadlet-postgres
+      uri: ghcr.io/luisarizmendi/app-bundle-postgres-quadlet
     category: application
     displayName: 'PostgreSQL DB'
     documentationUrl: https://www.postgresql.org/docs/

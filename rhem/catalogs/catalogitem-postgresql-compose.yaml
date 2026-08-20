@@ -9,7 +9,7 @@
   spec:
     artifacts:
     - type: container
-      uri: ghcr.io/luisarizmendi/app-compose-postgres
+      uri: ghcr.io/luisarizmendi/app-bundle-postgres-compose
     category: application
     displayName: 'PostgreSQL DB '
     documentationUrl: https://www.postgresql.org/docs/
