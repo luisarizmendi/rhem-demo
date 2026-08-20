@@ -9,7 +9,7 @@
   spec:
     artifacts:
     - type: container
-      uri: ghcr.io/luisarizmendi/app-http-server-upload:
+      uri: ghcr.io/luisarizmendi/app-http-server-upload
     category: application
     displayName: Upload Server
     homepage: https://github.com/luisarizmendi/rhem-demo/pkgs/container/app-http-server-upload
