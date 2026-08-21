@@ -2,7 +2,7 @@
   kind: CatalogItem
   metadata:
     annotations: {}
-    catalog: default
+    catalog: demo
     creationTimestamp: "2026-08-20T08:46:23.491193Z"
     labels: {}
     name: hello-world-helm
