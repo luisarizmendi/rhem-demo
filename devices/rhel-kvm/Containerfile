@@ -8,7 +8,7 @@ FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 ################################################################################
 
 RUN dnf config-manager \
-        --set-enabled edge-manager-1.0-for-rhel-9-$(uname -m)-rpms && \
+        --set-enabled edge-manager-1.2-for-rhel-9-$(uname -m)-rpms && \
     dnf -y install flightctl-agent flightctl-cli && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
@@ -43,8 +43,8 @@ RUN chmod +x /usr/local/bin/* && \
 # v2 (splitted here for demo)
 ################################################################################
 
-RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
-    systemctl enable cockpit.socket && \
-    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
-    dnf clean all
+#RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
+#    systemctl enable cockpit.socket && \
+#    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
+#    dnf clean all
 
