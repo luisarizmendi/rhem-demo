@@ -9,7 +9,7 @@ FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 ################################################################################
 
 RUN dnf config-manager \
-        --set-enabled edge-manager-1.2-for-rhel-9-$(uname -m)-rpms && \
+        --set-enabled edge-manager-1.3-for-rhel-9-$(uname -m)-rpms && \
     dnf -y install flightctl-agent flightctl-cli && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
