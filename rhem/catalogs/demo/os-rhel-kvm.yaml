@@ -33,7 +33,7 @@
     - channels:
       - test
       references:
-        container: v2
+        container: v3
       replaces: 1.0.0
       version: 2.0.0
 
