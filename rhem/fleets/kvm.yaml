@@ -2,12 +2,7 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels:
-    os.catalog.flightctl.io/catalog: demo
-    os.catalog.flightctl.io/channel: test
-    os.catalog.flightctl.io/item: rhel-kvm-os
-    postgres.app.catalog.flightctl.io/catalog: demo
-    postgres.app.catalog.flightctl.io/channel: test
-    postgres.app.catalog.flightctl.io/item: postgresql-quadlet
+    environment: demo
   name: kvm
 spec:
   selector:
@@ -29,6 +24,11 @@ spec:
         image: ghcr.io/luisarizmendi/app-bundle-postgres-quadlet:v1
         name: postgres
         volumes: []
+        catalogItemRef:
+          item: postgresql-quadlet
+          catalog: demo
+          channel: test
+          version: 1.0.0
       config:
       - name: motd-update
         configType: InlineConfigProviderSpec
@@ -48,6 +48,11 @@ spec:
           - "libvirt-vm*.service"
       os:
         image: ghcr.io/luisarizmendi/device-rhel-kvm:v1
+        catalogItemRef:
+          item: rhel-kvm-os
+          catalog: demo
+          channel: test
+          version: 1.0.0
 
 
 
