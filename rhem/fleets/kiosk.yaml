@@ -15,24 +15,24 @@ spec:
     spec:
       applications:
       - name: pos
-        image: ghcr.io/luisarizmendi/app-pos:v1
         ports:
           - '8080:8080'
+        runAs: ''
         appType: container
+        resources:
+          limits:
+            cpu: '1.0'
+            memory: 2048m
         catalogItemRef:
           item: pos-container
           catalog: demo
           channel: test
           version: 1.0.0
-      - appType: compose
-        envVars:
-          PGADMIN_MAIL: pgadmin@none.com
-          PGADMIN_PW: pgredhat
-          POSTGRES_DB: postgres
-          POSTGRES_PW: pgadmin
-          POSTGRES_USER: pgredhat
-        image: ghcr.io/luisarizmendi/app-bundle-postgres-compose:v1
-        name: postgres
+      - name: postgresql-compose
+        appType: compose
+        volumes: []
+        PGADMIN_PW: pgredhat
+        POSTGRES_PW: pgredhat
         catalogItemRef:
           item: postgresql-compose
           catalog: demo
@@ -61,7 +61,6 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        image: ghcr.io/luisarizmendi/device-kiosk:v1
         catalogItemRef:
           item: rhel-kiosk-os
           catalog: demo

@@ -14,16 +14,12 @@ spec:
         fleet: kvm
     spec:
       applications:
-      - appType: quadlet
-        envVars:
-          PGADMIN_MAIL: pgadmin@none.com
-          PGADMIN_PW: pgredhat
-          POSTGRES_DB: postgres
-          POSTGRES_PW: pgadmin
-          POSTGRES_USER: pgredhat
-        image: ghcr.io/luisarizmendi/app-bundle-postgres-quadlet:v1
-        name: postgres
+      - name: postgresql-quadlet
+        runAs: root
+        appType: quadlet
         volumes: []
+        PGADMIN_PW: pgredhat
+        POSTGRES_PW: pgredhat
         catalogItemRef:
           item: postgresql-quadlet
           catalog: demo
@@ -47,7 +43,6 @@ spec:
           - "flightctl-agent.service"
           - "libvirt-vm*.service"
       os:
-        image: ghcr.io/luisarizmendi/device-rhel-kvm:v1
         catalogItemRef:
           item: rhel-kvm-os
           catalog: demo
