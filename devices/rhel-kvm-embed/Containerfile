@@ -37,12 +37,7 @@ RUN chmod +x /usr/local/bin/* && \
     ln -s /usr/lib/systemd/system/first-boot.service /etc/systemd/system/multi-user.target.wants/first-boot.service && \
     ln -s /usr/lib/systemd/system/hook-files.service /etc/systemd/system/multi-user.target.wants/hook-files.service
 
-
-################################################################################
-# v2 upgrade demo
-################################################################################
-
-#RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
-#    systemctl enable cockpit.socket && \
-#    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
-#    dnf clean all
+RUN dnf install -y cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
+    systemctl enable cockpit.socket && \
+    firewall-offline-cmd --zone=public --add-port=9090/tcp && \
+    dnf clean all
