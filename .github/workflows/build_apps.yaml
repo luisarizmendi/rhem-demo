@@ -34,6 +34,7 @@ env:
   # directly in <directory>/<type>/.
   # Add more entries here if you introduce another apps/* directory.
   APP_GROUPS: '[{"directory":"apps/bundles","prefix":"app-bundle","subdir":""},{"directory":"apps/containers","prefix":"app","subdir":"src"},{"directory":"apps/vms","prefix":"vm","subdir":""}]'
+
 jobs:
   # Detect changed / requested apps across all configured groups
   detect-changes:
@@ -204,7 +205,8 @@ jobs:
           echo "Final app versions:"
           echo "$VERSIONS_JSON" | jq .
 
-  # Setup job: build the platform x app build matrix
+  # Setup job: build the platform x app build matrix, honoring a per-app
+  # "platforms" override read from a .buildconfig file next to the Containerfile
   setup:
     name: Setup build parameters
     runs-on: ubuntu-latest
@@ -213,9 +215,12 @@ jobs:
     outputs:
       platforms: ${{ steps.setup.outputs.platforms }}
       matrix: ${{ steps.setup.outputs.matrix }}
-      apps-json: ${{ needs.detect-changes.outputs.apps-json }}
+      apps-json: ${{ steps.setup.outputs.apps-json }}
       app-versions: ${{ needs.determine-versions.outputs.app-versions }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup build parameters
         id: setup
         run: |
@@ -230,26 +235,78 @@ jobs:
           echo "Building for platforms: $PLATFORMS"
 
           APPS_JSON='${{ needs.detect-changes.outputs.apps-json }}'
+          IFS=',' read -ra GLOBAL_PLATFORM_ARRAY <<< "$PLATFORMS"
 
-          MATRIX=$(jq -nc --argjson apps "$APPS_JSON" --arg platforms "$PLATFORMS" '
-            ($platforms | split(",")) as $plats |
-            {
-              include: [
-                $apps[] as $app |
-                $plats[] as $platform |
-                {
-                  platform: $platform,
-                  arch: ($platform | sub("^linux/"; "")),
-                  runner: (if ($platform | sub("^linux/"; "")) == "arm64" then "ubuntu-24.04-arm" else "ubuntu-latest" end),
-                  type: $app.type,
-                  directory: $app.directory,
-                  prefix: $app.prefix,
-                  subdir: $app.subdir
-                }
-              ]
-            }')
+          build_path() {
+            # $1=dir $2=type $3=subdir -> the folder that contains the Containerfile
+            if [ -n "$3" ]; then echo "$1/$2/$3"; else echo "$1/$2"; fi
+          }
 
+          # Read a "platforms" override from the app's .buildconfig, if present.
+          # Format inside .buildconfig: platforms: linux/amd64  (or platforms=linux/amd64)
+          get_allowed_platforms() {
+            local path="$1" default="$2"
+            if [ -f "$path/.buildconfig" ]; then
+              local cfg
+              cfg=$(grep -E '^platforms\s*[:=]\s*' "$path/.buildconfig" | sed -E 's/^platforms\s*[:=]\s*//' | tr -d '"'"'" | tr -d ' ')
+              if [ -n "$cfg" ]; then
+                echo "$cfg"
+                return
+              fi
+            fi
+            echo "$default"
+          }
+
+          APPS_OUT='[]'
+          MATRIX='{"include":['
+          first=1
+
+          for row in $(echo "$APPS_JSON" | jq -c '.[]'); do
+            TYPE=$(echo "$row" | jq -r '.type')
+            DIR=$(echo "$row" | jq -r '.directory')
+            PREFIX=$(echo "$row" | jq -r '.prefix')
+            SUBDIR=$(echo "$row" | jq -r '.subdir')
+            BUILD_PATH=$(build_path "$DIR" "$TYPE" "$SUBDIR")
+
+            ALLOWED=$(get_allowed_platforms "$BUILD_PATH" "$PLATFORMS")
+            echo "App $DIR/$TYPE allowed platforms: $ALLOWED"
+
+            # Keep only platforms that were both allowed for this app AND requested for this run
+            RESOLVED=""
+            IFS=',' read -ra APP_PLATFORMS <<< "$ALLOWED"
+            for p in "${APP_PLATFORMS[@]}"; do
+              for g in "${GLOBAL_PLATFORM_ARRAY[@]}"; do
+                if [ "$p" = "$g" ]; then
+                  RESOLVED="${RESOLVED:+$RESOLVED,}$p"
+                fi
+              done
+            done
+
+            if [ -z "$RESOLVED" ]; then
+              echo "No matching platforms for $DIR/$TYPE, skipping"
+              continue
+            fi
+
+            APPS_OUT=$(echo "$APPS_OUT" | jq -c --arg type "$TYPE" --arg dir "$DIR" --arg prefix "$PREFIX" --arg subdir "$SUBDIR" --arg platforms "$RESOLVED" \
+              '. + [{"type":$type,"directory":$dir,"prefix":$prefix,"subdir":$subdir,"platforms":$platforms}]')
+
+            IFS=',' read -ra RESOLVED_ARRAY <<< "$RESOLVED"
+            for PLATFORM in "${RESOLVED_ARRAY[@]}"; do
+              ARCH="${PLATFORM#linux/}"
+              if [ "$ARCH" = "arm64" ]; then RUNNER="ubuntu-24.04-arm"; else RUNNER="ubuntu-latest"; fi
+
+              if [ $first -eq 0 ]; then MATRIX+=","; fi
+              first=0
+              MATRIX+="{\"platform\":\"$PLATFORM\",\"arch\":\"$ARCH\",\"runner\":\"$RUNNER\",\"type\":\"$TYPE\",\"directory\":\"$DIR\",\"prefix\":\"$PREFIX\",\"subdir\":\"$SUBDIR\"}"
+            done
+          done
+
+          MATRIX+=']}'
+
+          echo "apps-json=$(echo "$APPS_OUT" | jq -c .)" >> $GITHUB_OUTPUT
           echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "Apps with resolved platforms:"
+          echo "$APPS_OUT" | jq .
           echo "Matrix:"
           echo "$MATRIX" | jq .
 
@@ -387,7 +444,8 @@ jobs:
         if: always()
         run: subscription-manager unregister
 
-  # Job: Create multi-platform manifest for each app
+  # Job: Create multi-platform manifest for each app, using the platforms
+  # that were actually resolved for that app in the setup job
   create-manifest:
     name: Create multi-platform manifests
     needs: [setup, build-image]
@@ -408,11 +466,11 @@ jobs:
 
           APPS_JSON='${{ needs.setup.outputs.apps-json }}'
           APP_VERSIONS='${{ needs.setup.outputs.app-versions }}'
-          PLATFORMS="${{ needs.setup.outputs.platforms }}"
 
           for row in $(echo "$APPS_JSON" | jq -c '.[]'); do
             TYPE=$(echo "$row" | jq -r '.type')
             PREFIX=$(echo "$row" | jq -r '.prefix')
+            APP_PLATFORMS=$(echo "$row" | jq -r '.platforms')
             IMAGE_NAME="${PREFIX}-${TYPE}"
             IMAGE_BASE="${{ env.REGISTRY }}/${IMAGE_NAME}"
             VERSION=$(echo "$APP_VERSIONS" | jq -r --arg k "$IMAGE_NAME" '.[$k]')
@@ -421,7 +479,7 @@ jobs:
             SHA_MANIFEST="${IMAGE_BASE}:${{ github.sha }}"
             VERSION_MANIFEST="${IMAGE_BASE}:${VERSION}"
 
-            echo "Creating multi-platform manifests for $IMAGE_NAME"
+            echo "Creating multi-platform manifests for $IMAGE_NAME (platforms: $APP_PLATFORMS)"
 
             podman manifest rm "$LATEST_MANIFEST" 2>/dev/null || true
             podman manifest rm "$SHA_MANIFEST" 2>/dev/null || true
@@ -431,7 +489,7 @@ jobs:
             podman manifest create "$SHA_MANIFEST"
             podman manifest create "$VERSION_MANIFEST"
 
-            IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+            IFS=',' read -ra PLATFORM_ARRAY <<< "$APP_PLATFORMS"
             for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
               ARCH="${PLATFORM#linux/}"
               echo "  Adding $ARCH images for $IMAGE_NAME"
@@ -471,7 +529,7 @@ jobs:
           PLATFORMS="${{ needs.setup.outputs.platforms }}"
 
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Platforms: $PLATFORMS" >> $GITHUB_STEP_SUMMARY
+          echo "- Platforms requested: $PLATFORMS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Apps Built" >> $GITHUB_STEP_SUMMARY
 
@@ -479,6 +537,7 @@ jobs:
             TYPE=$(echo "$row" | jq -r '.type')
             DIR=$(echo "$row" | jq -r '.directory')
             PREFIX=$(echo "$row" | jq -r '.prefix')
+            APP_PLATFORMS=$(echo "$row" | jq -r '.platforms')
             IMAGE_NAME="${PREFIX}-${TYPE}"
             VERSION=$(echo "$APP_VERSIONS" | jq -r --arg k "$IMAGE_NAME" '.[$k]')
 
@@ -486,9 +545,10 @@ jobs:
             echo "- Latest: ${{ env.REGISTRY }}/${IMAGE_NAME}:latest" >> $GITHUB_STEP_SUMMARY
             echo "- SHA: ${{ env.REGISTRY }}/${IMAGE_NAME}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
             echo "- Version: ${{ env.REGISTRY }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_STEP_SUMMARY
+            echo "- Built platforms: $APP_PLATFORMS" >> $GITHUB_STEP_SUMMARY
 
             echo "**Platform-specific Images:**" >> $GITHUB_STEP_SUMMARY
-            IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+            IFS=',' read -ra PLATFORM_ARRAY <<< "$APP_PLATFORMS"
             for PLATFORM in "${PLATFORM_ARRAY[@]}"; do
               ARCH="${PLATFORM#linux/}"
               if [ "$ARCH" = "amd64" ]; then ARCH_TAG="x86"; elif [ "$ARCH" = "arm64" ]; then ARCH_TAG="arm"; else ARCH_TAG="$ARCH"; fi
@@ -502,7 +562,6 @@ jobs:
 
           echo "### Job Status" >> $GITHUB_STEP_SUMMARY
           echo "- Change Detection: ${{ needs.detect-changes.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Version Determination: ${{ needs.determine-versions.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Setup: ${{ needs.setup.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Image Build: ${{ needs.build-image.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Manifest Creation: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
