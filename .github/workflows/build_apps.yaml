@@ -33,8 +33,7 @@ env:
   # Containerfile and build context; use "" if the Containerfile sits
   # directly in <directory>/<type>/.
   # Add more entries here if you introduce another apps/* directory.
-  APP_GROUPS: '[{"directory":"apps/bundles","prefix":"app-bundle","subdir":""},{"directory":"apps/containers","prefix":"app","subdir":"src"}]'
-
+  APP_GROUPS: '[{"directory":"apps/bundles","prefix":"app-bundle","subdir":""},{"directory":"apps/containers","prefix":"app","subdir":"src"},{"directory":"vms","prefix":"vm-disk","subdir":""}]'
 jobs:
   # Detect changed / requested apps across all configured groups
   detect-changes:
