@@ -1,0 +1,7 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest AS builder
+RUN curl -OL https://download.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2 /tmp/disk.qcow2
+RUN chmod 0440 /tmp/disk.qcow2 && \
+    chown 107:107 /tmp/disk.qcow2
+
+FROM scratch
+COPY --from=builder /tmp/disk/ /disk/
