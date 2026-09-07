@@ -4,4 +4,4 @@ RUN chmod 0440 /tmp/disk.qcow2 && \
     chown 107:107 /tmp/disk.qcow2
 
 FROM scratch
-COPY --from=builder /tmp/disk/ /disk/
+COPY --from=builder /tmp/disk.qcow2 /disk/
