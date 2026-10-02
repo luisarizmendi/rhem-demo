@@ -21,9 +21,7 @@ RUN dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-${B
     rm -rf /var/{cache,log} /var/lib/{dnf,rhsm} && \
     systemctl enable podman.service
 
-
 ##########
-
 # Additional packages
 RUN dnf -y install \
             tmux \
@@ -37,7 +35,6 @@ COPY files/ /
 RUN chmod -R 600 /etc/NetworkManager/system-connections/ && \
     chmod +x /usr/local/bin/set-hostname-from-mac.sh && \
     systemctl enable mac-hostname.service
-
 
 ################################################################################
 ######################    USER FOR ROOTLESS CONTAINERS  ########################
@@ -75,6 +72,6 @@ RUN chmod 755 /usr/local/bin/embed_image.sh && \
     systemctl enable copy-embedded-images.service
 
 ############ Images to embed ############
-RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-camera-capture:latest --user detector
-RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-inference-tensorrt-jetson:latest --user detector
-RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-stream-viewer:latest --user detector
+#RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-camera-capture:latest --user detector
+#RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-inference-tensorrt-jetson:latest --user detector
+#RUN /usr/local/bin/embed_image.sh quay.io/luisarizmendi/object-detection-custom-stream-viewer:latest --user detector

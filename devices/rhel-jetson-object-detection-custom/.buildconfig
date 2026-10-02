@@ -6,7 +6,7 @@ platforms: linux/arm64
 ##### INSTALLABLE ARTIFACTS
 # Valid values: true, false, auto
 # Note auto creates an instalable artifact if it does not exist any
-artifacts: true
+artifacts: auto
 
 # Valid values: bootc-generic-iso, bootc-installer, qcow2, vmdk, raw, ami, vhd, gce
 #artifact_formats: bootc-installer
@@ -19,7 +19,7 @@ artifacts: true
 # --bootc-ref. This app's own image is passed as
 # --bootc-installer-payload-ref. Edit ./installer/kickstart.ks and
 # ./installer/iso.yaml to customize this app's install, not the workflow.
-installer_base: anaconda-rhel9-base
+installer_base: anaconda-rhel10-base
 
 ##### VERSION MANAGEMENT
 # Valid values: true, false
