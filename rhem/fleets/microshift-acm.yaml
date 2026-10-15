@@ -2,12 +2,7 @@ apiVersion: flightctl.io/v1alpha1
 kind: Fleet
 metadata:
   labels:
-    hello.app.catalog.flightctl.io/catalog: default
-    hello.app.catalog.flightctl.io/channel: test
-    hello.app.catalog.flightctl.io/item: hello-world-helm
-    os.catalog.flightctl.io/catalog: demo
-    os.catalog.flightctl.io/channel: test
-    os.catalog.flightctl.io/item: rhel-microshift-os
+    environment: demo
   name: microshift-acm
 spec:
   selector:
@@ -37,34 +32,44 @@ spec:
 #        inline:
 #        - path: "/etc/crio/openshift-pull-secret"
 #          content: "{\"auths\":{...}}"
+      - name: apply-acm-manifests
+        inline:
+          - path: "/etc/flightctl/hooks.d/afterupdating/50-acm-registration.yaml"
+            content: |
+              - run: /usr/bin/bash -c "until [ -f $KUBECONFIG ]; do sleep 1; done"
+                timeout: 5m
+                envVars:
+                  KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
+              - run: kubectl wait --for=condition=Ready pods --all --all-namespaces --timeout=300s
+                timeout: 5m
+                envVars:
+                  KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
+              - if:
+                - path: /var/local/acm-import/crd.yaml
+                  op: [created]
+                run: kubectl apply -f /var/local/acm-import/crd.yaml
+                envVars:
+                  KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
+              - if:
+                - path: /var/local/acm-import/import.yaml
+                  op: [created]
+                run: kubectl apply -f /var/local/acm-import/import.yaml
+                envVars:
+                  KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
       - name: site-conf
         gitRef:
           mountPath: /
           path: /configs/microshift/site/{{ .metadata.labels.site }}
           repository: rhem-demo
           targetRevision: main
-      - name: apply-acm-manifests
-        inline:
-        - path: "/etc/flightctl/hooks.d/afterupdating/50-acm-registration.yaml"
-          content: |
-            - if:
-              - path: /var/local/acm-import/crd.yaml
-                op: [created]
-              run: kubectl apply -f /var/local/acm-import/crd.yaml
-              envVars:
-                KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
-            - if:
-              - path: /var/local/acm-import/import.yaml
-                op: [created]
-              run: kubectl apply -f /var/local/acm-import/import.yaml
-              envVars:
-                KUBECONFIG: /var/lib/microshift/resources/kubeadmin/kubeconfig
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
           - "microshift.service"
+
       os:
-        image: ghcr.io/luisarizmendi/device-microshift:v1
-
-
-
+        catalogItemRef:
+          item: rhel-microshift
+          catalog: demo
+          channel: test
+          version: 1.0.0

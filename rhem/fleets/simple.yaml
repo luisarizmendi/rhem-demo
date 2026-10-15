@@ -3,15 +3,15 @@ kind: Fleet
 metadata:
   labels:
     environment: demo
-  name: kvm
+  name: simple
 spec:
   selector:
     matchLabels:
-      fleet: "kvm"
+      fleet: "simple"
   template:
     metadata:
       labels:
-        fleet: kvm
+        fleet: simple
     spec:
       applications:
       - name: postgresql-quadlet
@@ -34,17 +34,16 @@ spec:
             mode: 0644
       - gitRef:
           mountPath: /
-          path: /configs/kvm
+          path: /configs/simple
           repository: rhem-demo
           targetRevision: main
         name: vms
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
-          - "libvirt-vm*.service"
       os:
         catalogItemRef:
-          item: rhel-kvm-os
+          item: rhel-os
           catalog: demo
           channel: test
           version: 1.0.0

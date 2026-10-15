@@ -5,14 +5,15 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 ## Summary
 
 0. [Demo Introduction](#0-demo-introduction-5-minutes)
-1. [Building Device Images](#1-building-device-images-10-minutes--background)
-2. [Device Onboarding](#2-device-onboarding-10-minutes)
-3. [Fleet Management](#3-fleet-management-10-minutes)
-4. [Check Configuration Management](#4-check-configuration-management-5-minutes)
-5. [Check Application Deployment](#5-check-application-deployment-10-minutes)
-6. [Operating System and Application Upgrades](#6-operating-system-and-application-upgrades-10-minutes)
-7. [Microshift management with ACM](#7-optional-microshift-management-with-acm-15-minutes)
-8. [Demo Wrap-up](#8-demo-wrap-up-5-minutes)
+1. [Repository Sync](#1-repository-sync-5-minutes--background)
+2. [Building Device Images](#2-building-device-images-10-minutes--background)
+3. [Device Onboarding](#3-device-onboarding-10-minutes)
+4. [Fleet Management](#4-fleet-management-10-minutes)
+5. [Check Configuration Management](#5-check-configuration-management-5-minutes)
+6. [Check Application Deployment](#6-check-application-deployment-10-minutes)
+7. [Operating System and Application Upgrades](#7-operating-system-and-application-upgrades-10-minutes)
+8. [Microshift management with ACM](#8-optional-microshift-management-with-acm-15-minutes)
+9. [Demo Wrap-up](#9-demo-wrap-up-5-minutes)
 
 ## 0. Demo Introduction (5 minutes)
 
@@ -27,8 +28,26 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 - **Infrastructure**: Single laptop demonstration with VMs simulating edge devices
 
 ---
+## 2. Building Device Images (10 minutes + background)
 
-## 1. Building Device Images (10 minutes + background)
+### Key Messages
+- Git as source of truth
+- Fleet Device management for consistency
+- Catalog for simplicity
+
+### Demo Steps
+
+1. **Show Git repo**
+
+2. **Create Repository and import Fleets and Catalog**
+
+3. **Show Catalog**
+
+4. **Show Fleets**
+
+
+
+## 2. Building Device Images (10 minutes + background)
 
 ### Key Messages
 - Bootc leverages container tools and knowledge for OS image creation
@@ -40,16 +59,19 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ### Demo Steps
 
-1. **Show bootc Images Containerfile**:
+2. **Show Image Build RHEM feature**:
+   Show Feature capabilities/limitations and explain that for production a Pipeline is the best approach.
+
+2. **Show bootc Images Containerfile**:
    Open one of the Containerfiles under `devices` directory in your repo and show how that `config.yaml` file is embeded into the image, and how the rhem agent is installed.
 
 
-2. **Demonstrate image building**:
+3. **Demonstrate image building**:
    Introduce a change in the `Containerfile`:
 
    ```bash
    # Make a visible change (e.g., add zsh package)
-   vi `devices/kvm/Containerfile`
+   vi `devices/rhel/Containerfile`
    ```
 
    Push the change into Git:
@@ -60,12 +82,12 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
    git push
    ```
 
-3. **Show GitHub Actions workflow**:
+4. **Show GitHub Actions workflow**:
    - Open repository **Actions** tab
    - Point out automated multi-arch builds
    - Explain versioning strategy
 
-4. **Continue with next section** (build runs in background)
+5. **Continue with next section** (build runs in background)
 
 
 ![step 1](step-1.png)
@@ -73,13 +95,13 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 
 ### What to Mention
-- Two image types: KVM (general purpose) and Kiosk (display applications)
+- Two image types: RHEL (general purpose) and Kiosk (display applications)
 - Subscription handling in GitHub Actions vs. registered RHEL hosts
 - Installable artifacts: ISO, QCOW2, AMI, VMDK options
 
 ---
 
-## 2. Device Onboarding (10 minutes)
+## 3. Device Onboarding (10 minutes)
 
 ### Key Messages  
 - Zero-touch provisioning reduces onsite expertise requirements
@@ -93,7 +115,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
    - Depending on the Images that you want to use, create one or multiple of these machines:
 
-   **Note:** If you want to demo Microshift, create either the `kiosk` or `kvm` VM to show RHEL configuration capabilities and one additional `microshift` VM to demo ACM integration (or modify the `microshift` fleet to add those as part of the definition). Maintain the `microshift` VM powered off until you start the Microshift management demo steps.
+   **Note:** If you want to demo Microshift, create either the `kiosk` or `rhel` VM to show RHEL configuration capabilities and one additional `microshift` VM to demo ACM integration (or modify the `microshift` fleet to add those as part of the definition). Maintain the `microshift` VM powered off until you start the Microshift management demo steps.
 
    These are the recommended resources for each type:
 
@@ -101,9 +123,9 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
       - 1.5GB RAM, 2 vCPUs, 20 GB Disk
       - Boot from Kiosk device ISO
 
-   * KVM VM
-      - 4GB RAM, 4 vCPUs, 50 GB Disk
-      - Boot from KVM device ISO
+   * RHEL VM
+      - 2GB RAM, 2 vCPUs, 50 GB Disk
+      - Boot from RHEL device ISO
 
    * Microshift VM
       - 4GB RAM, 4 vCPUs, 50 GB Disk
@@ -132,7 +154,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ---
 
-## 3. Fleet Management (10 minutes)
+## 4. Fleet Management (10 minutes)
 
 ### Key Messages
 - Scale from individual devices to fleet operations
@@ -142,21 +164,10 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ### Demo Steps
 
-1. **Create fleet from Git**:
-   - RHEM UI → `Repositories`
-   - Create a repository:
-         * Name: `rhem-demo`
-         * URL: `https://github.com/<your user>/<your repo>`
-         * Sync name: `rhem/fleets`
-         * Revision: `main`
-         * Path: `/rhem/fleets`
-   - Show the `fleet.yaml` file or/and how to create a fleet manually in the UI while waiting for sync completion (~1.5 minutes). 
-   - Show fleet in `Fleets` section
-
-2. **Enroll with fleet labels**:
+1. **Enroll with fleet labels**:
    - Back to `Devices` and click in `Approve`
    - Assign labels for:
-     * Your fleet(`kvm`, `kiosk` or `microshift`), e.g `fleet=kiosk`
+     * Your fleet(`simple`, `kiosk` or `microshift`), e.g `fleet=kiosk`
    - If your fleet require more labels, configure them. For example in the fleet `kiosk` you should configure `site` and `function`
      * Your site with `site=na` or `site=emea`  
      * Your function with `function=<directory name under configs/function>`, e.g. `function=kiosk-energy`
@@ -164,7 +175,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
    **Note:** Fleet `kiosk` is recommended to show config and app deployment later. The kiosk image has enabled the `kiosk-solvent-recovery` function by default, so if you want to see a change in the APP you should configure your label to a diffent value than that one.
 
-3. **Wait for drift detection**:
+2. **Wait for drift detection**:
    - Explain drift detection process
    - Wait until the `Update status` is "Up-to-date" (~1 minute)
 
@@ -183,7 +194,7 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 ---
 
-## 4. Check Configuration Management (5 minutes)
+## 5. Check Configuration Management (5 minutes)
 
 ### Key Messages
 - Runtime configuration preferred over build-time when needed
@@ -206,8 +217,12 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 3. **Verify kiosk APP**:
    Depending on the label `function` assigned to the device, you will get an APP or another. See below an example for `kiosk-energy` 
 
+4. **Make changes in a single device**:
+   Enroll a new device, do not include it in any Fleet and make configuration changes directly into it.
+
 
 ![step 4](step-4.png)
+
 
 
 ### What to Mention
@@ -222,7 +237,7 @@ When to Use Runtime Configuration:
 
 ---
 
-## 5. Check Application Deployment (10 minutes)
+## 6. Check Application Deployment (10 minutes)
 
 ### Key Messages
 - Container applications managed separately from OS lifecycle
@@ -266,6 +281,10 @@ When to Use Runtime Configuration:
    - Optional: Configure PostgreSQL connection
 
 
+4. **Deploy a new APP from the Catalog**:
+   Use the device that is not part of any Fleet as target for an APP deployment from the Catalog.
+
+
 ![step 5](step-5.png)
 
 ###  What to Mention
@@ -279,7 +298,7 @@ When to Use Runtime Configuration:
 
 ---
 
-## 6. Operating System and Application Upgrades (10 minutes)
+## 7. Operating System and Application Upgrades (10 minutes)
 
 ### Key Messages
 - Bootc enables image-based OS updates
@@ -348,7 +367,7 @@ When to Use Runtime Configuration:
 ---
 
 
-## 7. [OPTIONAL] Microshift management with ACM (20 minutes)
+## 8. [OPTIONAL] Microshift management with ACM (20 minutes)
 
 **Note:** You need RHEM integrated with ACM to follow these steps.
 
@@ -408,7 +427,7 @@ When to Use Runtime Configuration:
 
 ---
 
-## 8. Demo Wrap-up (5 minutes)
+## 9. Demo Wrap-up (5 minutes)
 
 ### Key Takeaways
 1. **Intuitive Operations**: User-friendly interface bridges IT skills gap

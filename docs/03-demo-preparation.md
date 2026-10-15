@@ -6,13 +6,13 @@ Complete these steps before running your demo to ensure smooth execution.
 
 ### 1. Prepare APP v1 and Device v1 definitions
 
-Create version 1 (baseline) of both device image definitions (`kvm` and `kiosk`) and the example application (Postgres).
+Create version 1 (baseline) of both device image definitions (`rhel` and `kiosk`) and the example application (Postgres).
 
 1. Copy the `config.yaml` file that you created after the [RHEM Deployment](02-rhem-deployment.md).
 
 ```bash
 # Copy RHEM config to image directories
-cp config.yaml devices/rhel-kvm/files/etc/flightctl/config.yaml
+cp config.yaml devices/rhel/files/etc/flightctl/config.yaml
 cp config.yaml devices/kiosk/files/etc/flightctl/config.yaml
 cp config.yaml devices/microshift/files/etc/flightctl/config.yaml
 ```

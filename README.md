@@ -49,15 +49,15 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 | Section | Duration | Key Features |
 |---------|----------|--------------|
 | 0. [Demo Introduction](docs/04-demo-script.md#0-demo-introduction-5-minutes)| 5 min | Demo Introduction |
-| 1. [Building Device Images](docs/04-demo-script.md#1-building-device-images-10-minutes--background) | 10 min | Bootc image creation, GitHub Actions |
-| 2. [Device Onboarding](docs/04-demo-script.md#2-device-onboarding-10-minutes) | 10 min | Zero-touch provisioning, enrollment |
-| 3. [Fleet Management](docs/04-demo-script.md#3-fleet-management-10-minutes) | 10 min | Intro to fleet management with RHEM |
-| 4. [Check Configuration Management](docs/04-demo-script.md#4-check-configuration-management-5-minutes) | 5 min | Runtime config update |
-| 5. [Check Application Deployment](docs/04-demo-script.md#5-check-application-deployment-10-minutes) | 10 min | Container app management, upgrades |
-| 6. [Operating System and Application Upgrades](docs/04-demo-script.md#6-operating-system-and-application-upgrades-10-minutes) | 10 min | Image-based OS and applicationupgrades |
-| 7. [Microshift management with ACM](docs/04-demo-script.md#7-optional-microshift-management-with-acm-20-minutes) | 15 min | Microshift management with ACM |
-| 8. [Demo Wrap-up](docs/04-demo-script.md#8-demo-wrap-up-5-minutes) | 5 min | Summary |
-
+| 1. [Repository Sync](docs/04-demo-script.md#1-repository-sync-5-minutes) | 5 min | UI and Repo Sync
+| 2. [Building Device Images](docs/04-demo-script.md#2-building-device-images-10-minutes--background) | 10 min | Bootc image creation, GitHub Actions |
+| 3. [Device Onboarding](docs/04-demo-script.md#3-device-onboarding-10-minutes) | 10 min | Zero-touch provisioning, enrollment |
+| 4. [Fleet Management](docs/04-demo-script.md#4-fleet-management-10-minutes) | 10 min | Intro to fleet management with RHEM |
+| 5. [Check Configuration Management](docs/04-demo-script.md#5-check-configuration-management-5-minutes) | 5 min | Runtime config update |
+| 6. [Check Application Deployment](docs/04-demo-script.md#6-check-application-deployment-10-minutes) | 10 min | Container app management, upgrades |
+| 7. [Operating System and Application Upgrades](docs/04-demo-script.md#7-operating-system-and-application-upgrades-10-minutes) | 10 min | Image-based OS and applicationupgrades |
+| 8. [Microshift management with ACM](docs/04-demo-script.md#8-optional-microshift-management-with-acm-20-minutes) | 15 min | Microshift management with ACM |
+| 9. [Demo Wrap-up](docs/04-demo-script.md#9-demo-wrap-up-5-minutes) | 5 min | Summary |
 
 
 ## Requirements
