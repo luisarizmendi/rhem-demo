@@ -2,20 +2,16 @@ ARG BASE_IMAGE_TAG='9.8'
 ########################################
 FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 
-ARG USHIFT_VER='4.21'
-ARG ACM_VER='2.17'
+ARG USHIFT_VER='4.22'
+ARG RHEM_VER='1.3'
+ARG GITOPS_VER='1.3'
 
 ################################################################################
 #Red Hat Edge Manager
 ################################################################################
 
-RUN dnf repolist all | grep -i edge
-
-
-RUN dnf repolist all
-
 RUN dnf config-manager \
-        --set-enabled rhacm-${ACM_VER}-for-rhel-9-$(uname -m)-rpms && \
+        --set-enabled edge-manager-${RHEM_VER}-for-rhel-9-$(uname -m)-rpms  && \
     dnf -y install flightctl-agent flightctl && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
@@ -35,7 +31,7 @@ RUN dnf config-manager \
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
-        --set-enabled gitops-1.16-for-rhel-9-$(uname -m)-rpms
+        --set-enabled gitops-${GITOPS_VER}-for-rhel-9-$(uname -m)-rpms
 
 RUN dnf install -y xz yq podman-plugins inotify-tools firewalld microshift microshift-cert-manager microshift-olm microshift-gitops microshift-observability dialog \
                    cockpit cockpit-machines cockpit-podman cockpit-system cockpit-bridge cockpit-pcp cockpit-storaged cockpit-session-recording cockpit-navigator && \
