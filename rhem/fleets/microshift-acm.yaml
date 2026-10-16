@@ -13,10 +13,10 @@ spec:
       labels:
         fleet: microshift-acm
     spec:
-      applications:
-        - name: hello
-          image: ghcr.io/luisarizmendi/app-bundle-hello-helm:v1
-          appType: helm
+#      applications:
+#        - name: hello
+#          image: ghcr.io/luisarizmendi/app-bundle-hello-helm:v1
+#          appType: helm
       config:
       - name: acm-crd
         httpRef:
