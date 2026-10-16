@@ -14,4 +14,4 @@ platforms: linux/amd64
 ##### VERSION MANAGEMENT
 # Valid values: true, false
 # When true, keeps the existing version instead of incrementing (default: false)
-keep_version: false
+keep_version: true
