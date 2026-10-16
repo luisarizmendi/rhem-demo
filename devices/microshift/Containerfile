@@ -9,7 +9,10 @@ ARG ACM_VER='2.17'
 #Red Hat Edge Manager
 ################################################################################
 
-RUN dnf repolist all | grep -i acm
+RUN dnf repolist all | grep -i edge
+
+
+RUN dnf repolist all
 
 RUN dnf config-manager \
         --set-enabled rhacm-${ACM_VER}-for-rhel-9-$(uname -m)-rpms && \
