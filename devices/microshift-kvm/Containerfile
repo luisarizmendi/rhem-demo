@@ -1,19 +1,18 @@
-ARG BASE_IMAGE_TAG='9.6'
-ARG USHIFT_VER='4.20'
-ARG ACM_VER='2.15'
+ARG BASE_IMAGE_TAG='9.8'
 ########################################
 FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 
-ARG ACM_VER
-ARG USHIFT_VER
+ARG USHIFT_VER='4.22'
+ARG RHEM_VER='1.3'
+ARG GITOPS_VER='1.21'
 
 ################################################################################
 #Red Hat Edge Manager
 ################################################################################
 
 RUN dnf config-manager \
-        --set-enabled rhacm-${ACM_VER}-for-rhel-9-$(uname -m)-rpms && \
-    dnf -y install flightctl-agent flightctl && \
+        --set-enabled edge-manager-${RHEM_VER}-for-rhel-9-$(uname -m)-rpms  && \
+    dnf -y install flightctl-agent && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
     systemctl mask bootc-fetch-apply-updates.timer 
