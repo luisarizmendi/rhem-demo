@@ -26,8 +26,6 @@ RUN dnf config-manager \
 
 ################################################################################
 
-
-
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms \
@@ -54,9 +52,3 @@ RUN firewall-offline-cmd --zone=trusted --add-source=10.42.0.0/16 && \
     firewall-offline-cmd --zone=public --add-port=6443/tcp && \
     firewall-offline-cmd --zone=public --add-port=30000-32767/tcp
 
-#////////////////////////////////////////
-#DEMO V2 update (tmux )
-#////////////////////////////////////////
-RUN dnf install -y tmux && \
-    dnf clean all
-#////////////////////////////////////////
