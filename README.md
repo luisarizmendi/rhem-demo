@@ -17,7 +17,6 @@ A comprehensive demo showcasing Red Hat Edge Manager (RHEM) capabilities for man
 
 ![demo arch](docs/demo-arch.png)
 
-
 ## Repository Structure
 
 ```
