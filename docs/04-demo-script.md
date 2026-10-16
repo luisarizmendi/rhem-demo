@@ -43,7 +43,8 @@ A step-by-step guide for running the Red Hat Edge Manager demo. Each section inc
 
 3. **Show Catalog**
 
-4. **Show Fleets**
+4. **Show Fleets**:
+   If you are not using ACM, explain that is the reason why the `microshift-acm` fleet has an error message.
 
 
 

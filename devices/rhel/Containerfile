@@ -45,3 +45,4 @@ RUN dnf install -y cockpit cockpit-podman cockpit-system cockpit-bridge cockpit-
     systemctl enable cockpit.socket && \
     firewall-offline-cmd --zone=public --add-port=9090/tcp && \
     dnf clean all
+

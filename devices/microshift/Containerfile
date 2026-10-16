@@ -1,11 +1,9 @@
 ARG BASE_IMAGE_TAG='9.6'
-ARG USHIFT_VER='4.20'
-ARG ACM_VER='2.15'
 ########################################
 FROM registry.redhat.io/rhel9/rhel-bootc:${BASE_IMAGE_TAG}
 
-ARG ACM_VER
-ARG USHIFT_VER
+ARG USHIFT_VER='4.21'
+ARG ACM_VER='2.17'
 
 ################################################################################
 #Red Hat Edge Manager

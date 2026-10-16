@@ -49,3 +49,4 @@ RUN systemctl set-default graphical.target
 RUN dnf install -y tmux && \
     dnf clean all
 #////////////////////////////////////////
+
