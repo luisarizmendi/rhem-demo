@@ -9,6 +9,8 @@ ARG ACM_VER='2.17'
 #Red Hat Edge Manager
 ################################################################################
 
+RUN dnf repolist all | grep -i acm
+
 RUN dnf config-manager \
         --set-enabled rhacm-${ACM_VER}-for-rhel-9-$(uname -m)-rpms && \
     dnf -y install flightctl-agent flightctl && \
@@ -24,6 +26,8 @@ RUN dnf config-manager \
      systemctl enable podman.service
 
 ################################################################################
+
+
 
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
