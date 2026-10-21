@@ -1,4 +1,4 @@
 ---
 global:
   message: Hi!
-
+createNamespace: false

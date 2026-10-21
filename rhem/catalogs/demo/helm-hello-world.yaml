@@ -9,7 +9,7 @@
   spec:
     artifacts:
     - type: container
-      uri: quay.io/luisarizmendi/helm-wordpress/wordpress
+      uri: quay.io/luisarizmendi/helm-hello/hello-world:0.0.1
     category: application
     displayName: Hello
     homepage: https://github.com/luisarizmendi/rhem-demo/pkgs/container/app-bundle-hello-helm
@@ -17,6 +17,12 @@
     provider: Luis Arizmendi
     shortDescription: Simple Hello World application deployed using Helm
     type: helm
+    values:
+      global:
+        message: Hola caracola
+      appType: helm
+    valuesFiles:
+      - values.yaml
     versions:
     - channels:
       - test

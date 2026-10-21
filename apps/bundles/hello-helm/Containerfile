@@ -1,6 +1,6 @@
 FROM scratch
 
-COPY files/* /
+COPY hello-helm/* /
 
 # Required 
 LABEL appType="helm"

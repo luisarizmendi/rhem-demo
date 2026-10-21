@@ -3,22 +3,8 @@
 # For auto-registration in ACM modify the ClusterManager cluster-manager object in OCP:
 #
 #
-#oc patch clustermanager cluster-manager --type=merge -p '{
-#  "spec": {
-#    "registrationConfiguration": {
-#      "featureGates": [
-#        {
-#          "feature": "ManagedClusterAutoApproval",
-#          "mode": "Enable"
-#        }
-#     ],
-#      "autoApproveUsers": [
-#        "system:serviceaccount:multicluster-engine:agent-registration-bootstrap"
-#      ]
-#    }
-#  }
-#}'
-#
+#oc patch clustermanager cluster-manager --type=merge -p '{  "spec": {    "registrationConfiguration": {      "featureGates": [        {          "feature": "ManagedClusterAutoApproval",          "mode": "Enable"        }     ],      "autoApproveUsers": [        "system:serviceaccount:multicluster-engine:agent-registration-bootstrap"      ]    }  }}'
+
 
 apiVersion: flightctl.io/v1beta1
 kind: Repository
