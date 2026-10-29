@@ -28,15 +28,16 @@ spec:
           catalog: demo
           channel: test
           version: 1.0.0
-      - name: postgresql-compose
+      - name: postgresql-quadlet
         ports:
           - '5050:80'
-        appType: compose
+        runAs: root
+        appType: quadlet
         volumes: []
         PGADMIN_PW: pgredhat
         POSTGRES_PW: pgredhat
         catalogItemRef:
-          item: postgresql-compose
+          item: postgresql-quadlet
           catalog: demo
           channel: test
           version: 1.0.0

@@ -13,8 +13,6 @@
     category: application
 
 
-
-
     defaults:
       config:
         values:
@@ -37,20 +35,18 @@
                   function:
                     type: string
                     title: function
-                    description: "p"
+                    description: "Function of the device"
                     default: hello-test
                   message:
                     type: string
                     title: message
-                    description: "p"
+                    description: "Welcome message"
                     default: "Hello/Hola"
                   site:
                     type: string
                     title: site
-                    description: "p"
+                    description: "Site where the device is located"
                     default: edge
-
-
 
 
     displayName: Hello
