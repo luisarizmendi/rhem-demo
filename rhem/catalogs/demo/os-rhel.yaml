@@ -30,9 +30,4 @@
         anaconda-iso: v1-amd64
         container: v1
       version: 1.0.0
-    - channels:
-      - test
-      references:
-        container: v2
-      replaces: 1.0.0
-      version: 2.0.0
+
