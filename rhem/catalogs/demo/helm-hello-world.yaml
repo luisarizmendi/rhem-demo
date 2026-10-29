@@ -11,8 +11,10 @@
     - type: container
       uri: quay.io/luisarizmendi/helm-hello/hello-world
     category: application
+
     defaults:
       config:
+        namespace: helm-hello
         values:
           createNamespace: false
           global:
