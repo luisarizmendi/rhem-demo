@@ -38,13 +38,14 @@
         container: v1
       version: 1.0.0
 
-
     defaults:
       config:
         envVars:
           POSTGRES_USER: "postgres"
+          POSTGRES_PW: "pgredhat"
           POSTGRES_DB: "postgres"
           PGADMIN_MAIL: "pgadmin@none.com"
+          PGADMIN_PW: "pgredhat"
 
       configSchema:
         $schema: "http://json-schema.org/draft-07/schema#"
