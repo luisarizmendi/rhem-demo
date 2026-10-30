@@ -62,8 +62,4 @@ spec:
           - "microshift.service"
 
       os:
-        catalogItemRef:
-          item: rhel-microshift-os
-          catalog: demo
-          channel: test
-          version: 1.0.0
+        image: ghcr.io/luisarizmendi/bootc-microshift:v1

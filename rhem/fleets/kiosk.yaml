@@ -64,10 +64,5 @@ spec:
         matchPatterns:
           - "flightctl-agent.service"
       os:
-        catalogItemRef:
-          item: rhel-kiosk-os
-          catalog: demo
-          channel: test
-          version: 1.0.0
-
+        image: ghcr.io/luisarizmendi/bootc-kiosk:v1
 
